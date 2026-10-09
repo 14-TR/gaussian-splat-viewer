@@ -2,14 +2,16 @@ import { chromium } from '@playwright/test';
 import { mkdir,writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {PNG} from 'pngjs';
+const base=(process.env.VIEWER_URL||'http://127.0.0.1:5173/gaussian-splat-viewer/').replace(/\/?$/,'/');
+const origin=new URL(base).origin;
 const browser=await chromium.launch({headless:false});
 try {
  const page=await browser.newPage();
- const external=[];page.on('request',r=>{if(r.method()==='POST'||(!r.url().startsWith('http://127.0.0.1:5173')&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:')))external.push(r.url())});
+ const external=[],failed=[],errors=[];page.on('response',r=>{if(r.status()>=400)failed.push(`${r.status()} ${r.url()}`)});page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST'||(!r.url().startsWith(origin)&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:')))external.push(r.url())});
  page.on('console',m=>console.log('console',m.type(),m.text()));
  page.on('pageerror',e=>console.log('pageerror',e.message));
- await page.goto('http://127.0.0.1:5173/gaussian-splat-viewer/spike/index.html');
- if(process.env.REAL_PHOTO_DIR){await page.locator('#photos').setInputFiles((process.env.REAL_PHOTOS||'01,02,03,04').split(',').map(n=>`${process.env.REAL_PHOTO_DIR}/${n}.${process.env.REAL_EXTENSION||'JPG'}`));await page.locator('#feature-size').selectOption(process.env.REAL_RESOLUTION||'512');await page.locator('#focal').fill(process.env.REAL_FOCAL||'1268');await page.locator('#run').click()}else if(process.env.KNOWN_CAMERAS==='1'){await page.locator('#known').click()}else{await page.locator('#fixture').click();await page.locator('#run').click();}
+ await page.goto(new URL('spike/index.html',base).href);
+ if(process.env.REAL_PHOTO_DIR){await page.locator('#photos').setInputFiles((process.env.REAL_PHOTOS||'01,02,03,04').split(',').map(n=>`${process.env.REAL_PHOTO_DIR}/${n}.${process.env.REAL_EXTENSION||'JPG'}`));await page.locator('#feature-size').selectOption(process.env.REAL_RESOLUTION||'512');await page.locator('#focal').fill(process.env.REAL_FOCAL||'1268');await page.locator('#run').click()}else if(process.env.KNOWN_CAMERAS==='1'){await page.locator('details').filter({has:page.locator('#known')}).evaluate(e=>e.open=true);await page.locator('#known').click()}else{await page.locator('#fixture').click();await page.locator('#run').click();}
  await page.waitForFunction(()=>!!window.spikeResult,null,{timeout:100000});
  const pose=await page.evaluate(()=>window.spikeResult);console.log('pose',{ok:pose.ok,error:pose.error});if(!pose.ok){await mkdir('test-results',{recursive:true});await writeFile('test-results/real-photo-blocker.json',JSON.stringify(pose,null,2));throw Error(pose.error)}
  if(process.env.KNOWN_CAMERAS!=='1')await page.locator('#train').click();
@@ -49,7 +51,8 @@ try {
  await writeFile('test-results/training-result.json',JSON.stringify(result,null,2));
  await page.screenshot({path:'test-results/training.png',fullPage:true});
  await page.locator('#train').click();await page.waitForFunction(()=>!!window.trainingResult,null,{timeout:200000});const repeat=await page.evaluate(()=>({ok:window.trainingResult.ok,error:window.trainingResult.error,parameterDelta:window.trainingResult.parameterDelta,metrics:window.trainingResult.metrics}));assert.equal(repeat.ok,true,repeat.error);assert(repeat.parameterDelta>0);assert(repeat.metrics.at(-1).psnr>repeat.metrics[0].psnr);result.repeatedRun={ok:true,finalPsnr:repeat.metrics.at(-1).psnr};await writeFile('test-results/training-result.json',JSON.stringify(result,null,2));
- await page.goto('http://127.0.0.1:5173/gaussian-splat-viewer/');await page.locator('#file').setInputFiles({name:'trained.ply',mimeType:'application/octet-stream',buffer:ply});await page.locator('#status').filter({hasText:'loaded'}).waitFor();assert((await page.locator('#stats').textContent()).includes(result.numSplats.toLocaleString()));
+ await page.goto(base);await page.locator('#file').setInputFiles({name:'trained.ply',mimeType:'application/octet-stream',buffer:ply});await page.locator('#status').filter({hasText:'loaded'}).waitFor();assert((await page.locator('#stats').textContent()).includes(result.numSplats.toLocaleString()));
  assert.deepEqual(external,[],'Repeated training and viewer round-trip must also stay local');
+ assert.deepEqual(failed,[],'All runtime assets must resolve');assert.deepEqual(errors,[],'No browser runtime errors');
  console.log('PASS actual Gaussian optimization, canonical PLY export, Spark pixels and orbit');
 } finally {await browser.close()}

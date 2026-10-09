@@ -4,7 +4,7 @@
   "description": "Local-first Gaussian splat viewer powered by Spark and Three.js",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/collect-notices.mjs",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "brush:build": "node scripts/build-brush.mjs",

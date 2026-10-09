@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
-test.skip(!!process.env.VIEWER_URL, 'The reconstruction spike is dev-only and is not deployed to Pages.');
+
 test('image-derived feature tracks reconstruct cameras without receiving ground-truth poses', async ({page}) => {
   const requests: string[]=[];
-  page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:5173') && !r.url().startsWith('blob:') && !r.url().startsWith('data:'))requests.push(r.url());expect(r.method()).not.toBe('POST');});
+  page.on('request',r=>{if(!r.url().startsWith(new URL(process.env.VIEWER_URL||'http://127.0.0.1:5173').origin) && !r.url().startsWith('blob:') && !r.url().startsWith('data:'))requests.push(r.url());expect(r.method()).not.toBe('POST');});
   await page.goto('./spike/index.html');
   await page.locator('#fixture').click();await page.locator('#run').click();
   await page.waitForFunction(()=>!!(window as any).spikeResult,{timeout:100000});
@@ -41,7 +41,7 @@ test('rejects empty texture and cancels processing without creating output',asyn
 });
 
 test('licensed real photos choose a central anchor and recover valid cameras',async({page})=>{
- const requests:string[]=[];page.on('request',r=>{if(r.method()==='POST'||(!r.url().startsWith('http://127.0.0.1:5173')&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:')))requests.push(r.url())});
+ const requests:string[]=[];page.on('request',r=>{if(r.method()==='POST'||(!r.url().startsWith(new URL(process.env.VIEWER_URL||'http://127.0.0.1:5173').origin)&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:')))requests.push(r.url())});
  await page.goto('./spike/index.html');
  await page.locator('#photos').setInputFiles(['01','02','03'].map(n=>`tests/fixtures/skull/${n}.png`));
  await page.locator('#feature-size').selectOption('1024');await page.locator('#focal').fill('2536');await page.locator('#run').click();

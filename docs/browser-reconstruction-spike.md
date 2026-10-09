@@ -1,6 +1,6 @@
 # Experimental local photos to splats
 
-This **dev-only prototype** now demonstrates photos → reconstructed cameras → actual Gaussian optimization → PLY export → Spark rendering on the procedural fixture. It is not a general-purpose or phone-ready photo reconstruction product. A licensed three-photo skull subset now completes camera reconstruction, training, PLY export and Spark rendering. The wider four-photo arc still fails the all-view-track requirement, even after the repair. Production builds and the existing Pages viewer exclude this route.
+This **published experimental feature** now demonstrates photos → reconstructed cameras → actual Gaussian optimization → PLY export → Spark rendering on the procedural fixture. It is not a general-purpose or phone-ready photo reconstruction product. A licensed three-photo skull subset now completes camera reconstruction, training, PLY export and Spark rendering. The wider four-photo arc still fails the all-view-track requirement, even after the repair. The existing Pages viewer includes an “Experimental: Create from photos” option. The viewer remains available separately; photos are processed only after explicit file selection and reconstruction/training actions.
 
 ## Reproduce
 
@@ -8,6 +8,7 @@ This **dev-only prototype** now demonstrates photos → reconstructed cameras �
 npm ci
 TRAINING_SPIKE=1 npm run dev
 # Open http://127.0.0.1:5173/gaussian-splat-viewer/spike/index.html
+# Hosted: https://14-tr.github.io/gaussian-splat-viewer/spike/index.html
 # In another terminal, with Playwright Chromium installed:
 KNOWN_CAMERAS=1 npm run test:training
 npm run test:training
@@ -61,7 +62,7 @@ The committed PNG fixture was also trained end to end independently: three camer
 
 With all four original photos at 1024 px, the repaired pipeline still finds only two common tracks. Adjacent pairs have 95, 181 and 108 inliers, but `01`↔`04` has zero. [Current failure diagnostics](evidence/real-photo-four-view-current-failure.json) make the remaining limitation explicit: all-view tracks cannot span that wider arc. Supporting such captures would need partial-track/incremental SfM work beyond this ordinary anchor/resolution repair. Selecting three closely overlapping views succeeds without hiding or dropping inputs automatically.
 
-The standard headless test suite reconstructs this real-photo fixture and checks central-anchor selection, front-facing geometry and reprojection error. It does not claim hardware GPU training in CI. Wider photo arcs, other captures, lens errors and full-scene coverage remain limitations, not solved by this one successful subset.
+The standard headless test suite runs against compiled production assets in CI, checks the phone-size entry/disclosures, and reconstructs this real-photo fixture and checks central-anchor selection, front-facing geometry and reprojection error. It does not claim hardware GPU training in CI. Wider photo arcs, other captures, lens errors and full-scene coverage remain limitations, not solved by this one successful subset.
 
 ## Privacy and limits
 
@@ -82,3 +83,9 @@ The original app license remains undecided. Spark, Three.js and build/test attri
 ## Separate failed Brush experiment
 
 Brush is no longer the active trainer. [Archived source/runtime investigation](brush-runtime-investigation.md), [failed metrics](evidence/brush-mac-failed-run.json) and [blank export](evidence/brush-mac-failed-render.png) remain clearly marked as failures. Its projection needs 12 storage buffers versus this Mac adapter's 10. `npm run brush:build` still reproduces the pinned source build and `spike/brush.worker.js` retains that implementation, but no UI invokes it. Brush source compilation passing CI is not evidence of successful GPU training.
+
+## Published build and hosted verification
+
+Vite emits the main viewer, experimental photo page and calibrated preview as separate entries. Worker scripts and OpenCV WASM have hashed asset paths under `/gaussian-splat-viewer/assets/`; the heavy WASM is requested when camera reconstruction starts, not by the main viewer. Dependency licenses/native notices are copied into `third-party/` during the build. `build-info.json` records the exact deployed Git commit.
+
+Use `VIEWER_URL=https://14-tr.github.io/gaussian-splat-viewer/ npm test` for all hosted browser checks. For real hosted GPU training, add the same `VIEWER_URL` to the fixture training command above. This loads hosted code/assets but keeps the selected photos and training local on the test Mac. Responsive/Chromium emulation checks are not physical iPhone/Safari verification.

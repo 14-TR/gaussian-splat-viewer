@@ -30,6 +30,8 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm test
+        env:
+          TEST_BUILD: "1"
       - uses: actions/upload-artifact@v6
         if: always()
         with:
