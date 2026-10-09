@@ -1,2 +1,6 @@
 import { defineConfig } from '@playwright/test';
-export default defineConfig({ testDir: './tests', use: { baseURL: 'http://127.0.0.1:5173', browserName: 'chromium', launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } }, webServer: { command: 'npm run dev', url: 'http://127.0.0.1:5173', reuseExistingServer: !process.env.CI } });
+export default defineConfig({
+  testDir: './tests', timeout: 60000,
+  use: { baseURL: process.env.VIEWER_URL ?? 'http://127.0.0.1:5173/gaussian-splat-viewer/', browserName: 'chromium', launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } },
+  webServer: process.env.VIEWER_URL ? undefined : { command: 'npm run dev', url: 'http://127.0.0.1:5173/gaussian-splat-viewer/', reuseExistingServer: !process.env.CI }
+});

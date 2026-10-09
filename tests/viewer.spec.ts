@@ -10,8 +10,8 @@ test('validation rejects unsupported, empty and oversized files', () => {
 });
 test('renders synthetic local file, supports controls and preserves scene on bad input', async ({page}) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
-  const external: string[] = []; page.on('request', r => { if (!r.url().startsWith('http://127.0.0.1:5173') && !r.url().startsWith('blob:') && !r.url().startsWith('data:')) external.push(r.url()); });
-  await page.goto('/');
+  const external: string[] = []; page.on('request', r => { if (!r.url().startsWith(new URL(process.env.VIEWER_URL ?? 'http://127.0.0.1:5173').origin) && !r.url().startsWith('blob:') && !r.url().startsWith('data:')) external.push(r.url()); });
+  await page.goto('./');
   await page.locator('#file').setInputFiles({name:'fixture.splat',mimeType:'application/octet-stream',buffer:Buffer.from(demoBytes())});
   await expect(page.locator('#status')).toContainText('loaded');
   await expect(page.locator('#stats')).toContainText('2,048');
@@ -32,7 +32,7 @@ test('renders synthetic local file, supports controls and preserves scene on bad
   expect(errors).toEqual([]); expect(external).toEqual([]);
 });
 test('demo and drag-drop work on a narrow viewport', async ({page}) => {
-  await page.setViewportSize({width:390,height:844}); await page.goto('/'); await page.getByRole('button',{name:'Explore demo'}).click(); await expect(page.locator('#status')).toContainText('loaded');
+  await page.setViewportSize({width:390,height:844}); await page.goto('./'); await page.getByRole('button',{name:'Explore demo'}).click(); await expect(page.locator('#status')).toContainText('loaded');
   await page.evaluate(bytes => { const dt=new DataTransfer(); dt.items.add(new File([new Uint8Array(bytes)],'dropped.splat')); window.dispatchEvent(new DragEvent('drop',{dataTransfer:dt})); },Array.from(demoBytes()));
   await expect(page.locator('#name')).toHaveText('dropped.splat'); await page.screenshot({path:'test-results/viewer-mobile.png',fullPage:true});
 });

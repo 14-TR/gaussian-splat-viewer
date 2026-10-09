@@ -1,6 +1,8 @@
 # Gaussian Splat Viewer
 
-A local-first, browser-based Gaussian splat viewer. Open a scene, drop a file, or explore the built-in colorful torus. Orbit, pan, zoom, reset the camera, toggle auto rotation, and choose the background.
+A local-first, browser-based Gaussian splat viewer. Open a scene, drop a file, or explore the instant colorful torus and the real Houseplant scan.
+
+**Live viewer:** https://14-tr.github.io/gaussian-splat-viewer/ — on your phone, tap **Explore houseplant** (0.87 MiB download) or **Explore demo** (instant, generated on-device). Orbit, pan, zoom, reset the camera, toggle auto rotation, and choose the background.
 
 ## Run locally
 
@@ -37,7 +39,7 @@ Files are limited to **256 MiB**, read completely into memory, and processed on 
 
 ## Privacy
 
-Selected files are passed as byte arrays directly to Spark. There is no upload endpoint, telemetry, external font, CDN dependency, cloud storage, account requirement, or API key. The built-in demo is generated in memory. App code, workers, and renderer assets are bundled locally. Installing npm packages and obtaining the app itself require network access; opening scene files does not. Browser tests assert no external requests during local scene loading.
+Selected files are passed as byte arrays directly to Spark. There is no upload endpoint, telemetry, external font, CDN dependency, cloud storage, account requirement, or API key. The torus demo is generated in memory. Tapping **Explore houseplant** downloads the public, licensed sample from the same GitHub Pages site; it does not upload anything. GitHub receives ordinary site and sample requests. App code, workers, and renderer assets are bundled locally. Installing npm packages and obtaining the app itself require network access; opening scene files does not. Browser tests assert no external requests during local scene loading.
 
 ## Checks and rendering evidence
 
@@ -48,9 +50,21 @@ npx playwright install chromium
 npm test
 ```
 
-Three Playwright tests cover validation, file loading and actual Gaussian rendering, orbit/zoom/reset and auto-rotate controls, error recovery, the demo, and drag/drop at a mobile viewport. The rendering check decodes a deterministic 64 KiB, 2,048-splat torus through the same file-loading path used for user files, checks over 1,000 colorful canvas pixels, and verifies orbiting changes the rendered image. It uses Chromium with SwiftShader for reproducible CI; this is a rendering correctness check, not a GPU performance benchmark. Desktop and mobile screenshots are saved in `test-results/`, which CI uploads as an artifact.
+Four Playwright tests cover validation, file loading and actual Gaussian rendering, orbit/zoom/reset and auto-rotate controls, error recovery, the demo, drag/drop at a mobile viewport, and the real Houseplant sample with emulated one-finger orbit and two-finger pinch/pan. The rendering check decodes a deterministic 64 KiB, 2,048-splat torus through the same file-loading path used for user files, checks over 1,000 colorful canvas pixels, and verifies orbiting changes the rendered image. It uses Chromium with SwiftShader for reproducible CI; this is a rendering correctness check, not a GPU performance benchmark. Desktop and mobile screenshots are saved in `test-results/`, which CI uploads as an artifact.
 
-The torus generator in `src/files.ts` is original synthetic test data. No third-party scan or private scene is bundled.
+The torus generator in `src/files.ts` is original synthetic test data (2,048 splats, 64 KiB). The bundled **Houseplant** is a real photographic capture and reconstruction by **Marcel Padilla**, from the [Gaussian Splat Objects Dataset](https://marcelpadilla.com/Gaussian_Splat_Object_Dataset/), under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The original contains 113,648 splats, 3,636,736 bytes (3.47 MiB), with SHA-256 `ce9d490b18f16d6730d832227bf541431b8b1a5d167c5a3fe89af4f324c0d8fd`. Source snapshot: [`marcelpadilla/splats` at `c3e5ec0`](https://github.com/marcelpadilla/splats/tree/c3e5ec0a8ddb3ab26f28a067a29d272fe1a23411/data/plant). The bundled mobile derivative retains every fourth splat: 28,412 splats, 909,184 bytes (0.87 MiB), SHA-256 `eddf2b50d0aa26b2f751d352d9358f6784aac223b69166cec454c3692ee13620`. This reduces visual detail. The original metadata is preserved with source attribution; `node scripts/prepare-sample.mjs` reproduces the derivative after checking the original hash. The viewer applies a 180-degree X rotation to display its -Y up axis upright. It has no view-dependent spherical harmonics and its scale is not metric. Attribution and full license text are in `public/samples/` and attribution is displayed beside its button.
+
+Touch gestures are tested in Chromium mobile emulation through CDP, not on physical hardware or iOS Safari. Actual mobile GPU speed and memory limits vary. The larger real sample is not guaranteed to run on every device; the instant torus is the fallback.
+
+## GitHub Pages deployment
+
+Vite's base is `/gaussian-splat-viewer/`, matching this repository's Pages path. The Actions workflow runs checks on pushes and pull requests; only successful `main` builds deploy `dist/` to the `github-pages` environment. Deployment uses GitHub's required `pages: write` and `id-token: write` permissions scoped to the deploy job; no secrets, paid service, or account permission changes are needed. Repository Pages must use the **GitHub Actions** source. Renaming the repository requires updating `vite.config.ts` and the test base URL.
+
+To rerun the same browser tests against the deployed site:
+
+```sh
+VIEWER_URL=https://14-tr.github.io/gaussian-splat-viewer/ npm test
+```
 
 ## Dependencies and attribution
 
