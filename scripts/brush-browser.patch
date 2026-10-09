@@ -1,0 +1,59 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 1691ac2..3622700 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -1083,6 +1083,7 @@ version = "1.0.0"
+ dependencies = [
+  "brush-process",
+  "brush-render",
++ "brush-serde",
+  "burn",
+  "console_error_panic_hook",
+  "getrandom 0.3.4",
+diff --git a/Cargo.toml b/Cargo.toml
+index 9904cb9..ffe4dd4 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -105,8 +105,9 @@ burn = { git = "https://github.com/tracel-ai/burn", branch = "main", default-fea
+     # `backend_extension`'s generated Fusion impls live behind this.
+     'fusion',
+ ] }
+-burn-cubecl = { git = "https://github.com/tracel-ai/burn", branch = "main" }
+-burn-wgpu = { git = "https://github.com/tracel-ai/burn", branch = "main", features = [
++burn-cubecl = { git = "https://github.com/tracel-ai/burn", branch = "main", default-features = false, features = ["std", "fusion", "wgpu"] }
++burn-wgpu = { git = "https://github.com/tracel-ai/burn", branch = "main", default-features = false, features = [
++    "std", "fusion", "webgpu",
+     "exclusive-memory-only",
+ ] }
+ burn-fusion = { git = "https://github.com/tracel-ai/burn", branch = "main" }
+diff --git a/apps/brush-js/Cargo.toml b/apps/brush-js/Cargo.toml
+index 3ea1ab3..f3680f3 100644
+--- a/apps/brush-js/Cargo.toml
++++ b/apps/brush-js/Cargo.toml
+@@ -12,6 +12,7 @@ crate-type = ["cdylib", "rlib"]
+ [dependencies]
+ brush-process.path = "../../crates/brush-process"
+ brush-render.path = "../../crates/brush-render"
++brush-serde.path = "../../crates/brush-serde"
+ rrfd.path = "../../crates/rrfd"
+ 
+ burn.workspace = true
+diff --git a/apps/brush-js/src/lib.rs b/apps/brush-js/src/lib.rs
+index 4ef4cd9..69aa86e 100644
+--- a/apps/brush-js/src/lib.rs
++++ b/apps/brush-js/src/lib.rs
+@@ -197,6 +197,14 @@ impl BrushSplatBuffers {
+ 
+ #[wasm_bindgen]
+ impl BrushSplats {
++    /// Export trained GPU tensors using Brush's canonical binary PLY serializer.
++    #[wasm_bindgen(js_name = exportPly)]
++    pub async fn export_ply(&self) -> Result<Vec<u8>, JsValue> {
++        brush_serde::splat_to_ply(self.inner.clone(), None)
++            .await
++            .map_err(|error| JsValue::from_str(&format!("{error:#}")))
++    }
++
+     #[wasm_bindgen(getter, js_name = numSplats)]
+     pub fn num_splats(&self) -> u32 {
+         self.inner.num_splats()

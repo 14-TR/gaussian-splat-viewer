@@ -4,9 +4,11 @@
   "description": "Local-first Gaussian splat viewer powered by Spark and Three.js",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/collect-notices.mjs",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
+    "brush:build": "node scripts/build-brush.mjs",
+    "test:training": "node scripts/check-training.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "keywords": [],
@@ -14,15 +16,18 @@
   "type": "module",
   "dependencies": {
     "@sparkjsdev/spark": "^2.3.1",
+    "splat.js": "https://github.com/arrival-space/splat.js/archive/88efe9aaf32279b0b9bcb781ea0deb4d60c49dff.tar.gz",
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@banou/opencv-wasm": "0.0.6",
     "@playwright/test": "^1.64.0",
     "@types/pngjs": "^6.0.5",
     "@types/three": "^0.186.0",
     "pngjs": "^7.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "wasm-pack": "0.15.0"
   },
   "private": true
 }

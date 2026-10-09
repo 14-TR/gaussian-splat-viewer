@@ -1,0 +1,510 @@
+{
+  "ok": true,
+  "engine": "Splat.js",
+  "iterations": 4000,
+  "numSplats": 1275,
+  "metrics": [
+    {
+      "iteration": 0,
+      "psnr": 9.237597451811565
+    },
+    {
+      "iteration": 50,
+      "psnr": 10.045518049645798
+    },
+    {
+      "iteration": 100,
+      "psnr": 11.157026922160007
+    },
+    {
+      "iteration": 150,
+      "psnr": 12.322157321814348
+    },
+    {
+      "iteration": 200,
+      "psnr": 13.346323629082926
+    },
+    {
+      "iteration": 250,
+      "psnr": 14.420067202758123
+    },
+    {
+      "iteration": 300,
+      "psnr": 15.248012981446454
+    },
+    {
+      "iteration": 350,
+      "psnr": 15.600313354375622
+    },
+    {
+      "iteration": 400,
+      "psnr": 16.123853460485385
+    },
+    {
+      "iteration": 450,
+      "psnr": 16.187991121992354
+    },
+    {
+      "iteration": 500,
+      "psnr": 16.41906129663012
+    },
+    {
+      "iteration": 550,
+      "psnr": 16.68165977870319
+    },
+    {
+      "iteration": 600,
+      "psnr": 16.75427038211052
+    },
+    {
+      "iteration": 650,
+      "psnr": 17.06579842630579
+    },
+    {
+      "iteration": 700,
+      "psnr": 17.106584495623927
+    },
+    {
+      "iteration": 750,
+      "psnr": 17.747764317249064
+    },
+    {
+      "iteration": 800,
+      "psnr": 17.519810740399237
+    },
+    {
+      "iteration": 850,
+      "psnr": 17.6064873739129
+    },
+    {
+      "iteration": 900,
+      "psnr": 17.99056038706959
+    },
+    {
+      "iteration": 950,
+      "psnr": 17.8302482153013
+    },
+    {
+      "iteration": 1000,
+      "psnr": 17.947314440034024
+    },
+    {
+      "iteration": 1050,
+      "psnr": 18.296889960451615
+    },
+    {
+      "iteration": 1100,
+      "psnr": 18.392610006760645
+    },
+    {
+      "iteration": 1150,
+      "psnr": 18.80750764869195
+    },
+    {
+      "iteration": 1200,
+      "psnr": 18.732149577707045
+    },
+    {
+      "iteration": 1250,
+      "psnr": 18.63990549281384
+    },
+    {
+      "iteration": 1300,
+      "psnr": 18.8032691740784
+    },
+    {
+      "iteration": 1350,
+      "psnr": 18.828604467620266
+    },
+    {
+      "iteration": 1400,
+      "psnr": 18.878285828376672
+    },
+    {
+      "iteration": 1450,
+      "psnr": 18.91081380150402
+    },
+    {
+      "iteration": 1500,
+      "psnr": 19.160563671049697
+    },
+    {
+      "iteration": 1550,
+      "psnr": 19.172334332162862
+    },
+    {
+      "iteration": 1600,
+      "psnr": 18.856788028477872
+    },
+    {
+      "iteration": 1650,
+      "psnr": 19.05520767689248
+    },
+    {
+      "iteration": 1700,
+      "psnr": 19.160393316064326
+    },
+    {
+      "iteration": 1750,
+      "psnr": 19.183451893842772
+    },
+    {
+      "iteration": 1800,
+      "psnr": 18.864896917533777
+    },
+    {
+      "iteration": 1850,
+      "psnr": 18.981184504892617
+    },
+    {
+      "iteration": 1900,
+      "psnr": 19.169772777627184
+    },
+    {
+      "iteration": 1950,
+      "psnr": 19.26086151349392
+    },
+    {
+      "iteration": 2000,
+      "psnr": 19.44461177539153
+    },
+    {
+      "iteration": 2050,
+      "psnr": 19.038611895227735
+    },
+    {
+      "iteration": 2100,
+      "psnr": 18.95348394127005
+    },
+    {
+      "iteration": 2150,
+      "psnr": 19.073202639927718
+    },
+    {
+      "iteration": 2200,
+      "psnr": 18.7877633950492
+    },
+    {
+      "iteration": 2250,
+      "psnr": 19.190993813567307
+    },
+    {
+      "iteration": 2300,
+      "psnr": 18.716587592499224
+    },
+    {
+      "iteration": 2350,
+      "psnr": 18.962426568680392
+    },
+    {
+      "iteration": 2400,
+      "psnr": 18.318026278182522
+    },
+    {
+      "iteration": 2450,
+      "psnr": 18.433772949713024
+    },
+    {
+      "iteration": 2500,
+      "psnr": 18.39018397985377
+    },
+    {
+      "iteration": 2550,
+      "psnr": 18.33813807464916
+    },
+    {
+      "iteration": 2600,
+      "psnr": 18.434349414929606
+    },
+    {
+      "iteration": 2650,
+      "psnr": 18.272244530084073
+    },
+    {
+      "iteration": 2700,
+      "psnr": 18.214865569715958
+    },
+    {
+      "iteration": 2750,
+      "psnr": 18.564999447937677
+    },
+    {
+      "iteration": 2800,
+      "psnr": 18.579728621785563
+    },
+    {
+      "iteration": 2850,
+      "psnr": 18.4033292744218
+    },
+    {
+      "iteration": 2900,
+      "psnr": 18.381632348028877
+    },
+    {
+      "iteration": 2950,
+      "psnr": 18.46036986581401
+    },
+    {
+      "iteration": 3000,
+      "psnr": 18.64156803761513
+    },
+    {
+      "iteration": 3050,
+      "psnr": 18.568565572253856
+    },
+    {
+      "iteration": 3100,
+      "psnr": 18.718433624825852
+    },
+    {
+      "iteration": 3150,
+      "psnr": 18.55535587361953
+    },
+    {
+      "iteration": 3200,
+      "psnr": 18.724592739233838
+    },
+    {
+      "iteration": 3250,
+      "psnr": 18.719356935328733
+    },
+    {
+      "iteration": 3300,
+      "psnr": 18.76841978700865
+    },
+    {
+      "iteration": 3350,
+      "psnr": 18.63567643026456
+    },
+    {
+      "iteration": 3400,
+      "psnr": 18.611438915984944
+    },
+    {
+      "iteration": 3450,
+      "psnr": 18.80483849722153
+    },
+    {
+      "iteration": 3500,
+      "psnr": 18.70384064061859
+    },
+    {
+      "iteration": 3550,
+      "psnr": 18.85091457113203
+    },
+    {
+      "iteration": 3600,
+      "psnr": 18.942290987366412
+    },
+    {
+      "iteration": 3650,
+      "psnr": 18.85519982410141
+    },
+    {
+      "iteration": 3700,
+      "psnr": 18.805309404765392
+    },
+    {
+      "iteration": 3750,
+      "psnr": 18.901655704302097
+    },
+    {
+      "iteration": 3800,
+      "psnr": 18.864896917533777
+    },
+    {
+      "iteration": 3850,
+      "psnr": 18.972529476537513
+    },
+    {
+      "iteration": 3900,
+      "psnr": 18.735083321852226
+    },
+    {
+      "iteration": 3950,
+      "psnr": 18.954133693637964
+    },
+    {
+      "iteration": 4000,
+      "psnr": 18.844415409865107
+    }
+  ],
+  "parameterDelta": 19494.530812066652,
+  "timing": {
+    "setupMs": 69.7000000178814,
+    "trainMs": 1700.9000000059605
+  },
+  "gpuProfile": {
+    "steps": 10,
+    "n": 1275,
+    "msPerStep": 0.38,
+    "project": 0.02,
+    "scan": 0.02,
+    "scatter": 0.02,
+    "sort": 0.026,
+    "renderFwd": 0.098,
+    "render": 0.269,
+    "chain": 0.02,
+    "adam": 0.007,
+    "renderBwd": 0.171,
+    "tileHist": {
+      "le256": 176,
+      "le512": 0,
+      "le1024": 0,
+      "le2048": 0,
+      "gt2048": 0,
+      "entries": 6513,
+      "maxTile": 234,
+      "tiles": 176
+    }
+  },
+  "intrinsics": {
+    "R": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+    ],
+    "t": [
+      0,
+      0,
+      0
+    ],
+    "imgIdx": 0,
+    "f": 634,
+    "cx": 128,
+    "cy": 85.375
+  },
+  "device": {
+    "description": "",
+    "maxStorageBuffersPerShaderStage": 8
+  },
+  "reconstruction": {
+    "elapsedMs": 732.5999999940395,
+    "reprojectionError": 0.18511372580281482,
+    "knownCameras": false,
+    "width": 1024,
+    "height": 683,
+    "tracks": 51,
+    "intrinsics": {
+      "focal": 2536,
+      "cx": 512,
+      "cy": 341.5
+    },
+    "diagnostics": {
+      "features": [
+        {
+          "name": "01.png",
+          "count": 1222
+        },
+        {
+          "name": "02.png",
+          "count": 1298
+        },
+        {
+          "name": "03.png",
+          "count": 1613
+        }
+      ],
+      "pairs": [
+        {
+          "from": "01.png",
+          "to": "02.png",
+          "reciprocal": 114,
+          "inliers": 113
+        },
+        {
+          "from": "01.png",
+          "to": "03.png",
+          "reciprocal": 14,
+          "inliers": 8
+        },
+        {
+          "from": "02.png",
+          "to": "03.png",
+          "reciprocal": 219,
+          "inliers": 206
+        }
+      ],
+      "anchors": [
+        {
+          "image": "02.png",
+          "sharedTracks": 51
+        },
+        {
+          "image": "01.png",
+          "sharedTracks": 8
+        },
+        {
+          "image": "03.png",
+          "sharedTracks": 7
+        }
+      ],
+      "selectedAnchor": "02.png",
+      "frontFacingFraction": 1
+    },
+    "cameraCenters": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1.0265573435694053,
+        0.11085463371073423,
+        0.24342948970872402
+      ],
+      [
+        1.8159977069765127,
+        0.3330787785527799,
+        0.6127965343525664
+      ]
+    ]
+  },
+  "rendering": {
+    "colorfulPixels": 131463,
+    "orbitChanged": true,
+    "exportedPsnr": 23.540667897834755
+  },
+  "repeatedRun": {
+    "ok": true,
+    "finalPsnr": 19.46155898532307
+  },
+  "provenance": {
+    "source": "https://gitlab.com/photogrammetry-test-sets/skull-cameramoves-flash-no-background",
+    "commit": "0f31c229ac289a615b3ae981a5f584856bb24c47",
+    "attribution": "Photogrammetry Test Set: Skull - Cameramoves - Flash - No Background #01, #02, #03 by alansartlog / CC BY 4.0",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "imageCount": 3,
+    "originalResolution": [
+      4272,
+      2848
+    ],
+    "featureResolution": [
+      1024,
+      683
+    ],
+    "trainingResolution": [
+      256,
+      171
+    ],
+    "images": {
+      "01.JPG": "49cc69b7e2e8999252c71536cc5a8a0ee32ae25d56d896969542653fa93e4858",
+      "02.JPG": "a0921ae9729fb92088f8335ed80cfcdede56a974dc07dc9501ab9eea37875d7a",
+      "03.JPG": "3aae3bbf830469ea8711915545627692b9655de9f881fa0b9a128543b8fb4be1"
+    },
+    "outputPlySha256": "dcf8de28f81a6181093b8b2dd14d62e024d0581a3137556f4fd6d0d7f24f5093",
+    "scope": "Soft partial frontal arc; not a full 360-degree scene.",
+    "inputKind": "Committed PNG fixture resized from the licensed source photographs",
+    "fixtureSha256": {
+      "01.png": "ad775cf6dce6863db53fbb75de4a391c638057a1d58b81391d094908bb3f4052",
+      "02.png": "1ce8a78cfe7709ecb492bc969dbf42bc43beb71e4675fb6df178f26ae6f26db4",
+      "03.png": "f45499f33e200f54bc274dca7458b5ab1289d16ee01b354c0d2acc89308aaf0d"
+    }
+  }
+}

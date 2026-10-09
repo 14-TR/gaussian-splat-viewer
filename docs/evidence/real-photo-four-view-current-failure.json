@@ -1,0 +1,93 @@
+{
+  "error": "Only 2 tracks survive across all images (best anchor 03.JPG); this spike needs 30. Select 3 closely overlapping views or use 1024 px feature images.",
+  "failedStage": "Matching and rejecting outliers 3 \u2194 4",
+  "diagnostics": {
+    "features": [
+      {
+        "name": "01.JPG",
+        "count": 1141
+      },
+      {
+        "name": "02.JPG",
+        "count": 1248
+      },
+      {
+        "name": "03.JPG",
+        "count": 1535
+      },
+      {
+        "name": "04.JPG",
+        "count": 1414
+      }
+    ],
+    "pairs": [
+      {
+        "from": "01.JPG",
+        "to": "02.JPG",
+        "reciprocal": 103,
+        "inliers": 95
+      },
+      {
+        "from": "01.JPG",
+        "to": "03.JPG",
+        "reciprocal": 14,
+        "inliers": 8
+      },
+      {
+        "from": "01.JPG",
+        "to": "04.JPG",
+        "reciprocal": 1,
+        "inliers": 0
+      },
+      {
+        "from": "02.JPG",
+        "to": "03.JPG",
+        "reciprocal": 205,
+        "inliers": 181
+      },
+      {
+        "from": "02.JPG",
+        "to": "04.JPG",
+        "reciprocal": 11,
+        "inliers": 7
+      },
+      {
+        "from": "03.JPG",
+        "to": "04.JPG",
+        "reciprocal": 112,
+        "inliers": 108
+      }
+    ],
+    "anchors": [
+      {
+        "image": "03.JPG",
+        "sharedTracks": 2
+      },
+      {
+        "image": "02.JPG",
+        "sharedTracks": 1
+      },
+      {
+        "image": "01.JPG",
+        "sharedTracks": 0
+      },
+      {
+        "image": "04.JPG",
+        "sharedTracks": 0
+      }
+    ],
+    "selectedAnchor": "03.JPG"
+  },
+  "configuration": {
+    "images": [
+      "01.JPG",
+      "02.JPG",
+      "03.JPG",
+      "04.JPG"
+    ],
+    "featureSize": 1024,
+    "focalPx": 2536,
+    "sourceProvenance": "real-photo-failed-reconstruction.json",
+    "trainingAttempted": false
+  }
+}
