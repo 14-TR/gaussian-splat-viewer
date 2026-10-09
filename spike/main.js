@@ -31,3 +31,41 @@ el('run').onclick=async()=>{
 el('cancel').onclick=()=>{stop();status('Cancelled. No photos were uploaded.');window.spikeResult={cancelled:true}};
 
 const download=document.createElement('button');download.textContent='Export reconstruction JSON';document.body.append(download);download.onclick=()=>{if(!window.spikeResult?.ok){status('Reconstruct cameras successfully before exporting.');return}const blob=new Blob([JSON.stringify(window.spikeResult,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='camera-reconstruction.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+
+const trainButton=document.createElement('button');trainButton.id='train';trainButton.textContent='Train Gaussians from reconstructed cameras';document.body.append(trainButton);
+const plyButton=document.createElement('button');plyButton.id='export-ply';plyButton.textContent='Export trained PLY';plyButton.disabled=true;document.body.append(plyButton);
+const preview=document.createElement('iframe');preview.id='trained-viewer';preview.title='Trained Gaussian splats in Spark';preview.style.cssText='width:100%;height:800px;border:0;display:none';document.body.append(preview);
+let trainedBlob,jobId;
+window.trainingResult=null;
+async function cleanupJob(){if(!jobId)return;const id=jobId;jobId=null;try{const root=await navigator.storage.getDirectory();const parent=await root.getDirectoryHandle('gaussian-browser-jobs');await parent.removeEntry(id,{recursive:true})}catch{}}
+const originalCancel=el('cancel').onclick;
+el('cancel').onclick=()=>{originalCancel();void cleanupJob();window.trainingResult={cancelled:true};trainButton.disabled=false};
+trainButton.onclick=async()=>{
+ if(!window.spikeResult?.ok){status('Reconstruct cameras successfully before training.');return}
+ if(!navigator.gpu||!navigator.storage?.getDirectory){status('Training requires WebGPU and local browser storage support.');return}
+ try{
+  window.trainingResult=null;
+  const adapter=await navigator.gpu.requestAdapter();
+  if(!adapter)throw Error('No WebGPU adapter is available. Use hardware acceleration in a supported browser.');
+  const limit=adapter.limits.maxStorageBuffersPerShaderStage;
+  if(limit<12)throw Error(`Training blocked: this Brush build needs at least 12 storage buffers per shader stage; this browser/device supports ${limit}. Camera reconstruction remains available.`);
+  const reconstruction=window.spikeResult;trainButton.disabled=true;plyButton.disabled=true;window.trainingResult=null;el('run').disabled=true;el('fixture').disabled=true;el('photos').disabled=true;el('cancel').disabled=false;
+  jobId=crypto.randomUUID();status('Starting bounded local Gaussian training…');
+  worker=new Worker(new URL('./train.worker.js',import.meta.url),{type:'module'});
+  timer=setTimeout(()=>{stop();void cleanupJob();trainButton.disabled=false;status('Training stopped at its 180-second budget.');window.trainingResult={error:'timeout'}},180000);
+  worker.onerror=e=>{stop();void cleanupJob();trainButton.disabled=false;status(`Training engine error: ${e.message}`);window.trainingResult={error:e.message}};
+  worker.onmessage=async({data})=>{
+   if(data.ok){
+    const bytes=new Uint8Array(data.bytes);trainedBlob=new Blob([bytes],{type:'application/octet-stream'});plyButton.disabled=false;
+    window.trainingResult={...data,bytes,initialBytes:new Uint8Array(data.initialBytes)};
+    status(`Trained ${data.numSplats} Gaussians for ${data.iterations} iterations. Loading exported PLY into Spark…\n${JSON.stringify(data.metrics,null,2)}`);
+    stop();void cleanupJob();trainButton.disabled=false;preview.style.display='block';
+    preview.onload=()=>{const w=preview.contentWindow,input=w.document.querySelector('#file');const transfer=new w.DataTransfer();transfer.items.add(new w.File([bytes],'trained-reconstruction.ply',{type:'application/octet-stream'}));input.files=transfer.files;input.dispatchEvent(new w.Event('change',{bubbles:true}))};
+    preview.src=`${import.meta.env.BASE_URL}?trained=${Date.now()}`;
+   }else if(data.error){window.trainingResult=data;status(`Gaussian training failed: ${data.error}`);stop();void cleanupJob();trainButton.disabled=false}
+   else if(data.stage)status(data.stage);
+  };
+  worker.postMessage({files,reconstruction,jobId,steps:Math.min(400,Math.max(50,Number(el('steps').value)||400))});
+ }catch(e){stop();void cleanupJob();trainButton.disabled=false;status(e.message);window.trainingResult={error:e.message}}
+};
+plyButton.onclick=()=>{if(!trainedBlob)return;const url=URL.createObjectURL(trainedBlob),a=document.createElement('a');a.href=url;a.download='trained-reconstruction.ply';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};

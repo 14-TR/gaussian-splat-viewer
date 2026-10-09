@@ -1,0 +1,65 @@
+{
+  "numSplats": 85,
+  "iterations": 400,
+  "metrics": [
+    {
+      "iter": 50,
+      "psnr": 7.4273858070373535,
+      "ssim": 0.0010899397311732173
+    },
+    {
+      "iter": 100,
+      "psnr": 7.4273858070373535,
+      "ssim": 0.0010899397311732173
+    },
+    {
+      "iter": 150,
+      "psnr": 7.4273858070373535,
+      "ssim": 0.0010899397311732173
+    },
+    {
+      "iter": 200,
+      "psnr": 7.4273858070373535,
+      "ssim": 0.0010899397311732173
+    },
+    {
+      "iter": 250,
+      "psnr": 7.4273858070373535,
+      "ssim": 0.0010899397311732173
+    },
+    {
+      "iter": 300,
+      "psnr": 7.4273858070373535,
+      "ssim": 0.0010899397311732173
+    },
+    {
+      "iter": 350,
+      "psnr": 7.4273858070373535,
+      "ssim": 0.0010899397311732173
+    },
+    {
+      "iter": 400,
+      "psnr": 7.4273858070373535,
+      "ssim": 0.0010899397311732173
+    }
+  ],
+  "dataset": {
+    "width": 512,
+    "height": 384,
+    "frames": 4,
+    "initialPoints": 100
+  },
+  "loaded": {
+    "trainViews": 3,
+    "evalViews": 1
+  },
+  "source": "Actual Brush WebGPU training from reconstructed camera dataset",
+  "accepted": false,
+  "failure": "Flat held-out PSNR and nearly blank Spark rendering; not a successful photo-to-splat proof.",
+  "environment": {
+    "hardware": "Mac M4 Pro",
+    "browser": "Playwright Chromium with Apple metal-3 WebGPU",
+    "maxStorageBuffersPerShaderStage": 10,
+    "projectionRequiredStorageBuffers": 12
+  }
+}
