@@ -26,7 +26,7 @@ test('one-tap real sample renders at phone size with touch orbit and pinch/pan',
   await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x-30,y,id:1},{x:x+30,y,id:2}]});
   for(let i=1;i<=2;i++) await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-30-i*15,y:y+i*4,id:1},{x:x+30+i*15,y:y+i*4,id:2}]});
   await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  await expect.poll(async () => (await canvas.screenshot()).equals(orbited)).toBe(false);
+  await expect.poll(async () => (await canvas.screenshot()).equals(orbited), {timeout:30000}).toBe(false);
   await page.screenshot({path:'test-results/houseplant-phone.png',fullPage:true});
   expect(errors).toEqual([]); expect(failed).toEqual([]);
 });

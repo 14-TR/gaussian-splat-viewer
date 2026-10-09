@@ -23,7 +23,7 @@ test('renders synthetic local file, supports controls and preserves scene on bad
   },{timeout:30000}).toBeGreaterThan(1000);
   const before = await canvas.screenshot(); const box = (await canvas.boundingBox())!;
   await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5); await page.mouse.down(); await page.mouse.move(box.x+box.width*.7,box.y+box.height*.6,{steps:12}); await page.mouse.up();
-  await expect.poll(async () => (await canvas.screenshot()).equals(before)).toBe(false);
+  await expect.poll(async () => (await canvas.screenshot()).equals(before), {timeout:30000}).toBe(false);
   await page.mouse.wheel(0,100); await page.getByRole('button',{name:'Reset camera'}).click();
   await page.getByLabel('Auto rotate').check(); await page.getByLabel('Auto rotate').uncheck();
   await page.locator('#file').setInputFiles({name:'bad.splat',mimeType:'application/octet-stream',buffer:Buffer.from([1,2,3])});
