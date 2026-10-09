@@ -1,6 +1,6 @@
 # Experimental local photos to splats
 
-This **dev-only prototype** now demonstrates photos → reconstructed cameras → actual Gaussian optimization → PLY export → Spark rendering on the procedural fixture. It is not a general-purpose or phone-ready photo reconstruction product. The tested real-photo subset failed camera matching. Production builds and the existing Pages viewer exclude this route.
+This **dev-only prototype** now demonstrates photos → reconstructed cameras → actual Gaussian optimization → PLY export → Spark rendering on the procedural fixture. It is not a general-purpose or phone-ready photo reconstruction product. A licensed three-photo skull subset now completes camera reconstruction, training, PLY export and Spark rendering. The wider four-photo arc still fails the all-view-track requirement, even after the repair. Production builds and the existing Pages viewer exclude this route.
 
 ## Reproduce
 
@@ -17,7 +17,7 @@ The known-camera button is a separate trainer control: it explicitly supplies sy
 
 ## Pipeline and coordinate conventions
 
-Four original 512×384 procedural views contain three textured surfaces at different depths. OpenCV SIFT uses 1,500 features, reciprocal ratio-0.7 matching and fundamental RANSAC at 1.5 px. Up to 100 all-view tracks seed fixed-intrinsics libmv/Ceres reconstruction with keyframes 0 and 1. Acceptance requires all cameras, at least 30 finite points, nonzero baseline and reprojection error below 3 px. An earlier 300-track/keyframe-0,3 configuration failed with a WASM memory-access error; arbitrary datasets may still fail.
+Four original 512×384 procedural views contain three textured surfaces at different depths. OpenCV SIFT uses up to 1,500 features at 512 px or 4,000 at 1,024 px, reciprocal ratio-0.7 matching and fundamental RANSAC at 1.5 px. Every selected image pair is matched once. The anchor with the most all-view geometrically verified tracks is selected automatically; camera/image ordering is preserved. Up to 100 all-view tracks seed fixed-intrinsics libmv/Ceres reconstruction with keyframes 0 and 1. Acceptance requires all cameras, at least 30 finite points, nonzero baseline, reprojection error below 3 px and at least 90% of points in front of all cameras. Per-pair features/matches/inliers, anchor counts and cheirality are exported in diagnostics. An earlier 300-track/keyframe-0,3 configuration failed with a WASM memory-access error; arbitrary datasets may still fail.
 
 OpenCV and Splat.js share row-major world-to-camera R,t, with X right, Y down and Z forward. No pose sign conversion occurs at training handoff. Focal length and principal point are scaled from the reconstructed-image width to the actual training-image width; the fixture changes 512 to 256 px and focal 411.7453 to 205.8727 px. The experimental Spark preview converts those cameras to OpenGL camera-to-world using the independently tested helper in `spike/dataset.js`.
 
@@ -33,17 +33,41 @@ Tests run in visible Playwright Chromium on the M4 Pro Mac, using normal WebGPU 
 
 Timing records separate decode/setup, camera reconstruction and training wall time. A separate 10-step timestamp profile runs **after the exported snapshot**; those diagnostic steps are not included in the reported/exported 4,000 training iterations. Rasterization/gradient accumulation is the largest measured training kernel cost. Those kernels already run on the GPU; rewriting the JavaScript orchestration in Rust would not remove that bottleneck. These are tiny-fixture measurements, not benchmarks for large real scenes.
 
-## Real-photo attempt
+## Real-photo result and original failure
 
-Four photos, `01.JPG`–`04.JPG`, from [Skull - Cameramoves - Flash - No Background](https://gitlab.com/photogrammetry-test-sets/skull-cameramoves-flash-no-background) by [alansartlog](https://alansartlog.com), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), were tested locally at source commit `0f31c229ac289a615b3ae981a5f584856bb24c47`. Their README explicitly licenses the images. EXIF identifies Canon EOS REBEL T3 and a 55 mm lens; the test used an approximate focal of 1,268 px at the 512 px image width. No photo is copied into this repository.
+Source: [Skull - Cameramoves - Flash - No Background](https://gitlab.com/photogrammetry-test-sets/skull-cameramoves-flash-no-background) by [alansartlog](https://alansartlog.com), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), commit `0f31c229ac289a615b3ae981a5f584856bb24c47`. The source README explicitly licenses the photographs and supplies attribution. EXIF identifies Canon EOS REBEL T3 and a 55 mm lens. Original photos are 4272×2848 JPEGs; fixed approximate calibration uses a 22.2 mm sensor width, giving focal 2536 px at a 1024 px resized width. No distortion correction or external camera poses are used.
 
-The test failed before training with **only eight reciprocal matches for image 3**. [Failure/provenance/hashes](evidence/real-photo-failed-reconstruction.json) are preserved. Reproduce after downloading these licensed files to a local directory with `REAL_PHOTO_DIR=/absolute/path npm run test:training`; the current subset is expected to fail. This demonstrates a real SfM limitation, not a passing end-to-end real-photo result.
+The initial four-photo set (`01.JPG`–`04.JPG`) at 512 px failed: the first-to-third pair had only eight reciprocal matches. Moving the anchor to the middle image with three views gave 52/86 reciprocal matches, but only 20 all-view tracks at that resolution. [Original failure/provenance/hashes](evidence/real-photo-failed-reconstruction.json) remains preserved. This was an overly peripheral first-image anchor combined with feature resolution too low for this detailed, reflective object; no quality threshold was relaxed to obtain success.
+
+**Successful three-photo subset:** `01.JPG`, `02.JPG`, `03.JPG`, in that natural order. Features run at 1024×683; training runs at 256×171 with focal 634 px and principal point (128, 85.375). Automatic matching chooses `02.JPG`; the pair has 95/181 geometric inliers to its neighbors, while `01`↔`03` has only eight. There are 32 shared tracks and three recovered cameras, ~0.127 px reprojection error, and all points in front of all cameras. Training on two views holds the third out of gradient updates; SfM uses all three photos, as standard reconstruction does.
+
+The bounded run optimizes 800 Gaussians for 4000 iterations. Held-out PSNR improves from 8.95 to about 18.34 dB. [Actual metrics/diagnostics](evidence/real-photo-training.json), [exported Spark screenshot](evidence/real-photo-trained-render.png) and [trained PLY](evidence/real-photo-trained.ply) are saved. Spark's calibrated exported-view similarity, colorful pixels, orbit, original-viewer loading, finite floats/quaternions, cancellation/restart, two consecutive training runs and no external/POST requests are asserted. The model depicts a recognizable skull but is soft and covers only the observed frontal arc; it is not a complete 360° or photorealistic reconstruction. The trainer's held-out metric and Spark's first-source-view metric are different measurements.
+
+Reproduce from downloaded originals:
+
+```sh
+REAL_PHOTO_DIR=/absolute/path/to/originals REAL_PHOTOS=01,02,03 \
+  REAL_RESOLUTION=1024 REAL_FOCAL=2536 npm run test:training
+```
+
+The committed [licensed regression fixture](../tests/fixtures/skull/README.md) contains those three images resized to lossless 1024×683 PNG (about 3.9 MiB total), with explicit attribution and [full CC BY license](../licenses/Skull-CC-BY-4.0.txt). `node scripts/prepare-real-fixture.mjs /path/to/originals` checks original SHA-256 hashes and reproduces the resize. Only these related licensed derivatives and evidence are published; no user photos are included. Reproduce training directly from the fixture:
+
+```sh
+REAL_PHOTO_DIR="$PWD/tests/fixtures/skull" REAL_PHOTOS=01,02,03 \
+  REAL_EXTENSION=png REAL_RESOLUTION=1024 REAL_FOCAL=2536 npm run test:training
+```
+
+The committed PNG fixture was also trained end to end independently: three cameras, 51 tracks, 0.185 px reprojection error, 1,275 Gaussians and held-out PSNR 9.24→18.84 dB; Spark exported-view PSNR 23.54 dB. [Fixture metrics](evidence/real-photo-fixture-training.json), [fixture export](evidence/real-photo-fixture-render.png) and [fixture trained PLY](evidence/real-photo-fixture-trained.ply) retain hashes and the same CC-BY attribution. A repeated run reaches 19.46 dB. Metrics differ from the original JPEG-input run because this resize/PNG round-trip freezes different decoded/resampled pixels; both runs are measured separately.
+
+With all four original photos at 1024 px, the repaired pipeline still finds only two common tracks. Adjacent pairs have 95, 181 and 108 inliers, but `01`↔`04` has zero. [Current failure diagnostics](evidence/real-photo-four-view-current-failure.json) make the remaining limitation explicit: all-view tracks cannot span that wider arc. Supporting such captures would need partial-track/incremental SfM work beyond this ordinary anchor/resolution repair. Selecting three closely overlapping views succeeds without hiding or dropping inputs automatically.
+
+The standard headless test suite reconstructs this real-photo fixture and checks central-anchor selection, front-facing geometry and reprojection error. It does not claim hardware GPU training in CI. Wider photo arcs, other captures, lens errors and full-scene coverage remain limitations, not solved by this one successful subset.
 
 ## Privacy and limits
 
-- 3–6 equal-dimension JPEG/PNG photos, maximum 24 MiB total; no HEIC, video, EXIF autocalibration, lens-distortion correction, partial tracks or disconnected views. Supply focal length at the resized 512 px resolution.
+- 3–6 equal-dimension JPEG/PNG photos, maximum 24 MiB total; no HEIC, video, EXIF autocalibration, lens-distortion correction, partial tracks or disconnected views. Supply focal length at the chosen feature-image resolution (512 or 1024 px longest side). Changing feature size adjusts the supplied focal for the selected image size; verify that calibration before reconstructing.
 - All input decoding, matching, training and export stay on this device. No upload endpoint exists; tests reject any POST or external-origin request during the workflow. Splat.js jobs use memory, **not OPFS persistence**. Cancellation terminates the worker and clears pending output; repeated runs allocate a fresh device/model. Completed local downloads persist wherever the user saves them.
-- The pinned OpenCV WASM is about 46 MiB. It is too heavy to describe as phone-ready. Physical iPhone/Safari and robust real-photo success remain unverified.
+- The pinned OpenCV WASM is about 46 MiB. It is too heavy to describe as phone-ready. Physical iPhone/Safari and general real-photo robustness remain unverified.
 - The UI rejects unavailable adapters and fewer than eight storage buffers, reports WebGPU validation/device errors, and does not offer export after failed or cancelled training.
 - Low step budgets can fail the quality gate. Even accepted output may be blurry or lack coverage; a 2,000-Gaussian, degree-0 prototype is a deliberately small experiment.
 

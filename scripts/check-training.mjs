@@ -9,7 +9,7 @@ try {
  page.on('console',m=>console.log('console',m.type(),m.text()));
  page.on('pageerror',e=>console.log('pageerror',e.message));
  await page.goto('http://127.0.0.1:5173/gaussian-splat-viewer/spike/index.html');
- if(process.env.REAL_PHOTO_DIR){await page.locator('#photos').setInputFiles(['01','02','03','04'].map(n=>`${process.env.REAL_PHOTO_DIR}/${n}.JPG`));await page.locator('#focal').fill('1268');await page.locator('#run').click()}else if(process.env.KNOWN_CAMERAS==='1'){await page.locator('#known').click()}else{await page.locator('#fixture').click();await page.locator('#run').click();}
+ if(process.env.REAL_PHOTO_DIR){await page.locator('#photos').setInputFiles((process.env.REAL_PHOTOS||'01,02,03,04').split(',').map(n=>`${process.env.REAL_PHOTO_DIR}/${n}.${process.env.REAL_EXTENSION||'JPG'}`));await page.locator('#feature-size').selectOption(process.env.REAL_RESOLUTION||'512');await page.locator('#focal').fill(process.env.REAL_FOCAL||'1268');await page.locator('#run').click()}else if(process.env.KNOWN_CAMERAS==='1'){await page.locator('#known').click()}else{await page.locator('#fixture').click();await page.locator('#run').click();}
  await page.waitForFunction(()=>!!window.spikeResult,null,{timeout:100000});
  const pose=await page.evaluate(()=>window.spikeResult);console.log('pose',{ok:pose.ok,error:pose.error});if(!pose.ok){await mkdir('test-results',{recursive:true});await writeFile('test-results/real-photo-blocker.json',JSON.stringify(pose,null,2));throw Error(pose.error)}
  if(process.env.KNOWN_CAMERAS!=='1')await page.locator('#train').click();
@@ -19,7 +19,7 @@ try {
  await page.waitForFunction(()=>!!window.trainingResult,null,{timeout:200000}).finally(()=>clearInterval(poll));
  const result=await page.evaluate(()=>({...window.trainingResult,bytes:Array.from(window.trainingResult.bytes||[]),initialBytes:Array.from(window.trainingResult.initialBytes||[])}));
  if(!result.ok){await mkdir('test-results',{recursive:true});await writeFile('test-results/training-blocker.json',JSON.stringify(result,null,2));await page.screenshot({path:'test-results/training-blocker.png',fullPage:true})}
- result.reconstruction={elapsedMs:pose.elapsedMs,reprojectionError:pose.reprojectionError,knownCameras:!!pose.knownCameras};
+ result.reconstruction={elapsedMs:pose.elapsedMs,reprojectionError:pose.reprojectionError,knownCameras:!!pose.knownCameras,width:pose.width,height:pose.height,tracks:pose.tracks,intrinsics:pose.intrinsics,diagnostics:pose.diagnostics,cameraCenters:pose.cameraCenters};
  assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.iterations,4000);assert(result.numSplats>0&&result.numSplats<=2000);
  assert(!Buffer.from(result.bytes).equals(Buffer.from(result.initialBytes)),'Optimization must change exported Gaussian parameters');
  assert(result.metrics.length>=2,'Require real held-out evaluations');
@@ -42,7 +42,7 @@ try {
  assert(colorful>1000,`Expected rendered scene pixels, got ${colorful}`);
  await canvas.scrollIntoViewIfNeeded();const box=await canvas.boundingBox();await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();await page.mouse.move(box.x+box.width*.7,box.y+box.height*.6,{steps:12});await page.mouse.up();
  await page.waitForTimeout(500);assert(!(await canvas.screenshot()).equals(before),'Orbit must change trained-scene rendering');
- const exportedPsnr=await page.evaluate(async bytes=>{const bitmap=await createImageBitmap(new Blob([new Uint8Array(bytes)]));const c=document.createElement('canvas');c.width=512;c.height=384;const ctx=c.getContext('2d');ctx.drawImage(bitmap,0,0,512,384);bitmap.close();const a=ctx.getImageData(0,0,512,384).data;ctx.drawImage(document.querySelector('#images img'),0,0,512,384);const b=ctx.getImageData(0,0,512,384).data;let mse=0;for(let i=0;i<a.length;i+=4)for(let k=0;k<3;k++)mse+=((a[i+k]-b[i+k])/255)**2;return -10*Math.log10(mse/(512*384*3))},Array.from(before));
+ const exportedPsnr=await page.evaluate(async bytes=>{const bitmap=await createImageBitmap(new Blob([new Uint8Array(bytes)]));const c=document.createElement('canvas');c.width=512;c.height=Math.round(512*document.querySelector('#images img').naturalHeight/document.querySelector('#images img').naturalWidth);const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,c.width,c.height);bitmap.close();const a=ctx.getImageData(0,0,c.width,c.height).data;ctx.drawImage(document.querySelector('#images img'),0,0,c.width,c.height);const b=ctx.getImageData(0,0,c.width,c.height).data;let mse=0;for(let i=0;i<a.length;i+=4)for(let k=0;k<3;k++)mse+=((a[i+k]-b[i+k])/255)**2;return -10*Math.log10(mse/(c.width*c.height*3))},Array.from(before));
  assert(exportedPsnr>12,`Exported Spark view must resemble source photograph; PSNR ${exportedPsnr}`);
  result.rendering={colorfulPixels:colorful,orbitChanged:true,exportedPsnr};
  assert.deepEqual(external,[],'Photos and training must stay local');

@@ -11,14 +11,16 @@ async function select(next){
  for(const f of files){const img=document.createElement('img');const url=URL.createObjectURL(f);img.src=url;img.width=160;img.onload=()=>URL.revokeObjectURL(url);el('images').append(img)}
  status(`${files.length} photos selected. Set the approximate resized-image focal length before reconstructing.`);
 }
+let previousFeatureSize=512;
+el('feature-size').onchange=()=>{const next=Number(el('feature-size').value),img=el('images').querySelector('img');if(img?.naturalWidth){const side=Math.max(img.naturalWidth,img.naturalHeight);el('focal').value=Number(el('focal').value)*Math.min(next,side)/Math.min(previousFeatureSize,side)}previousFeatureSize=next};
 el('photos').onchange=async e=>{try{await select([...e.target.files])}catch(e){status(e.message)}};
 el('fixture').onclick=async()=>{try{const data=await fixture();el('focal').value=data.focal;window.fixtureTruth=data.truth;await select(data.files)}catch(e){status(e.message)}};
 el('run').onclick=async()=>{
  try {
-  const focal=Number(el('focal').value);if(!Number.isFinite(focal)||focal<50||focal>2000)throw Error('Focal length must be 50–2000 pixels.');
+  const focal=Number(el('focal').value);if(!Number.isFinite(focal)||focal<50||focal>8000)throw Error('Focal length must be 50–8000 pixels.');
   el('run').disabled=true;el('photos').disabled=true;el('fixture').disabled=true;el('cancel').disabled=false;window.spikeResult=null;
   const token=++generation;const images=[];
-  for(const file of files){const bitmap=await createImageBitmap(file);const scale=Math.min(1,512/Math.max(bitmap.width,bitmap.height));const canvas=new OffscreenCanvas(Math.round(bitmap.width*scale),Math.round(bitmap.height*scale));const context=canvas.getContext('2d');context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();if(token!==generation)return;const pixels=context.getImageData(0,0,canvas.width,canvas.height);images.push({name:file.name,width:canvas.width,height:canvas.height,data:pixels.data.buffer})}
+  for(const file of files){const bitmap=await createImageBitmap(file);const scale=Math.min(1,Number(el('feature-size').value)/Math.max(bitmap.width,bitmap.height));const canvas=new OffscreenCanvas(Math.round(bitmap.width*scale),Math.round(bitmap.height*scale));const context=canvas.getContext('2d');context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();if(token!==generation)return;const pixels=context.getImageData(0,0,canvas.width,canvas.height);images.push({name:file.name,width:canvas.width,height:canvas.height,data:pixels.data.buffer})}
   if(images.some(i=>i.width!==images[0].width||i.height!==images[0].height))throw Error('This bounded spike requires equal image dimensions.');
   if(token!==generation)return;
   status('Loading local OpenCV WASM worker…');worker=new Worker(new URL('./pose.worker.js',import.meta.url),{type:'module'});

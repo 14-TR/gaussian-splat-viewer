@@ -39,3 +39,14 @@ test('rejects empty texture and cancels processing without creating output',asyn
   await expect(page.locator('#status')).toContainText('Cancelled');
   expect(await page.evaluate(()=>(window as any).spikeResult)).toEqual({cancelled:true});
 });
+
+test('licensed real photos choose a central anchor and recover valid cameras',async({page})=>{
+ const requests:string[]=[];page.on('request',r=>{if(r.method()==='POST'||(!r.url().startsWith('http://127.0.0.1:5173')&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:')))requests.push(r.url())});
+ await page.goto('./spike/index.html');
+ await page.locator('#photos').setInputFiles(['01','02','03'].map(n=>`tests/fixtures/skull/${n}.png`));
+ await page.locator('#feature-size').selectOption('1024');await page.locator('#focal').fill('2536');await page.locator('#run').click();
+ await page.waitForFunction(()=>!!(window as any).spikeResult,{timeout:100000});const result=await page.evaluate(()=>(window as any).spikeResult);
+ expect(result.error).toBeUndefined();expect(result.ok).toBe(true);expect(result.cameras).toHaveLength(3);expect(result.tracks).toBeGreaterThanOrEqual(30);
+ expect(result.width).toBe(1024);expect(result.height).toBe(683);expect(result.diagnostics.selectedAnchor).toBe('02.png');expect(result.reprojectionError).toBeLessThan(1);expect(result.diagnostics.frontFacingFraction).toBeGreaterThanOrEqual(.9);
+ expect(result.diagnostics.pairs.find((p:any)=>p.from==='01.png'&&p.to==='03.png').inliers).toBeLessThan(30);expect(result.points.flat().every(Number.isFinite)).toBe(true);expect(requests).toEqual([]);
+});
