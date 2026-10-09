@@ -1,82 +1,60 @@
-# Browser camera-reconstruction spike
+# Experimental local photos to splats
 
-This is a **dev-only experimental prototype**, not a verified complete photos-to-splats product. Image-derived camera reconstruction works. Official Brush WASM, camera-dataset handoff, bounded training, canonical PLY export and Spark loading are wired, but **end-to-end trained rendering is blocked on the tested Mac/browser**. Its WebGPU adapter permits 10 storage buffers per shader stage; Brush's projection pass binds 12. The UI now refuses training before engine startup on that device. The existing Pages viewer and production entry remain unchanged.
+This **dev-only prototype** now demonstrates photos → reconstructed cameras → actual Gaussian optimization → PLY export → Spark rendering on the procedural fixture. It is not a general-purpose or phone-ready photo reconstruction product. The tested real-photo subset failed camera matching. Production builds and the existing Pages viewer exclude this route.
 
-## Run
+## Reproduce
 
 ```sh
 npm ci
 TRAINING_SPIKE=1 npm run dev
+# Open http://127.0.0.1:5173/gaussian-splat-viewer/spike/index.html
+# In another terminal, with Playwright Chromium installed:
+KNOWN_CAMERAS=1 npm run test:training
+npm run test:training
 ```
 
-Open `http://127.0.0.1:5173/gaussian-splat-viewer/spike/index.html`.
+The known-camera button is a separate trainer control: it explicitly supplies synthetic poses and a dense surface seed. The normal fixture button supplies only original rendered images and focal calibration to OpenCV; withheld poses are used solely to check recovered camera spacing. Generate the fixture, reconstruct cameras, train, and export PLY. The preview starts at the first training camera, supports orbit/pan/zoom and resets to that camera. The exported file also opens through the original viewer's local-file input.
 
-Choose **Generate local multi-view fixture**, then **Reconstruct cameras**. Or select 3–6 overlapping JPEG/PNG photos with the same image dimensions and set their approximate focal length in pixels **at the resized resolution**. This spike does not infer EXIF calibration or correct lens distortion. Download computed camera/point data with **Export reconstruction JSON**. Training is available only after a compatible adapter and local Brush build are present. `TRAINING_SPIKE=1` disables hot reload during long GPU work; refresh manually after edits.
+## Pipeline and coordinate conventions
 
-To reproduce the source build (Git, Rust 1.95.0 and its wasm32 target required):
+Four original 512×384 procedural views contain three textured surfaces at different depths. OpenCV SIFT uses 1,500 features, reciprocal ratio-0.7 matching and fundamental RANSAC at 1.5 px. Up to 100 all-view tracks seed fixed-intrinsics libmv/Ceres reconstruction with keyframes 0 and 1. Acceptance requires all cameras, at least 30 finite points, nonzero baseline and reprojection error below 3 px. An earlier 300-track/keyframe-0,3 configuration failed with a WASM memory-access error; arbitrary datasets may still fail.
 
-```sh
-rustup toolchain install 1.95.0 --profile minimal
-rustup target add wasm32-unknown-unknown --toolchain 1.95.0
-npm run brush:build
-```
+OpenCV and Splat.js share row-major world-to-camera R,t, with X right, Y down and Z forward. No pose sign conversion occurs at training handoff. Focal length and principal point are scaled from the reconstructed-image width to the actual training-image width; the fixture changes 512 to 256 px and focal 411.7453 to 205.8727 px. The experimental Spark preview converts those cameras to OpenGL camera-to-world using the independently tested helper in `spike/dataset.js`.
 
-The build script clones official Brush into a fresh temporary directory, checks out an exact commit, applies the checked-in patch and builds with `--locked`. It retains that source directory for inspection. Generated `spike/brush-pkg/` is ignored and is not published. `npm run test:training` opens visible Chromium against the running dev server and requires actual changed finite Gaussian parameters, improved held-out PSNR, visible Spark pixels and orbit changes. The compared early snapshot is already partly trained; it is not an untrained baseline. **It currently fails at the real adapter capability gate on this Mac.** This is intentional, not a skipped or passing training test.
+Splat.js seeds up to 2,000 Gaussians from reconstructed XYZ and sampled first-image RGB, then optimizes all Gaussian parameters on WebGPU. The known-camera control uses 1,728 surface points without clone truncation. The final view is withheld from gradient updates; evaluation uses that view every 50 iterations. Training is rounded to multiples of 50, bounded at 50–4,000 iterations, 256 px longest image side, degree-0 SH, no growth and a maximum 4:1 axis ratio. Jobs time out after 180 seconds. These limits bound requested work, not all browser/GPU memory.
 
-The fixture renders four 512×384 views of three textured surfaces at different depths. Textures are original seeded rectangles, generated on-device with Three.js; no external photos, models, fonts, or texture assets are used. Ground-truth camera positions stay in the fixture generator/test and are **not passed to the reconstruction worker**. Its known focal length is supplied as camera calibration, not as a pose. No third-party data is redistributed.
+PLY is upstream's binary little-endian standard INRIA layout, including positions, zero normals, SH DC, logit opacity, log scales and normalized WXYZ quaternion. Mip opacity compensation is **baked using the run's actual focal, camera centers and dilation 0.1** before export. This is upstream's approximation for standard renderers, not exact projection parity at every viewing angle. The test parses every exported float, checks count/size and quaternion normalization, requires parameter changes and improved held-out PSNR, checks source-image similarity in calibrated Spark pixels, orbits the scene, and loads the same bytes in the original viewer.
 
-## What is computed
+## Evidence and performance
 
-1. Resize photos to at most 512 pixels on their longest side; require identical resized dimensions.
-2. In a dedicated worker, load OpenCV WASM and extract SIFT descriptors.
-3. Match the first view to each subsequent view, apply the 0.7 descriptor ratio test and reciprocal matching.
-4. Apply fundamental-matrix RANSAC with a 1.5-pixel threshold to each pair.
-5. Keep up to 100 tracks observed in every view; require at least 30.
-6. Run libmv/Ceres Euclidean camera reconstruction with fixed supplied intrinsics.
-7. Require all cameras, finite 3D points, nonzero camera baseline and reprojection error below 3 pixels; export JSON.
+See [known-camera metrics](evidence/splat-js-known-camera.json), [known-camera export](evidence/splat-js-known-camera.png), [image-derived metrics](evidence/splat-js-recovered-camera.json) and [image-derived export](evidence/splat-js-recovered-camera.png). These are actual trained exports, not a pre-existing model. The image-derived model remains soft and incomplete where only 100 sparse tracks seed the surfaces; numerical improvement does not establish arbitrary-photo quality.
 
-Automated fixture verification recovers four cameras and 100 points at approximately **0.055 pixels mean reprojection error** on this Mac's Chromium. It checks recovered relative camera spacing against withheld ground truth, up to arbitrary global scale, and downloads the actual reconstruction JSON. The result is neither a slideshow nor a pre-existing or hallucinated splat.
+Tests run in visible Playwright Chromium on the M4 Pro Mac, using normal WebGPU without unsafe flags. The adapter supports 10 storage buffers per shader stage; Splat.js successfully uses the default device limit of 8. Standard headless Chromium on this Mac has no hardware adapter, so headless CI covers reconstruction, capability rejection and viewer rendering rather than claiming GPU training.
 
-## Limits and privacy
+Timing records separate decode/setup, camera reconstruction and training wall time. A separate 10-step timestamp profile runs **after the exported snapshot**; those diagnostic steps are not included in the reported/exported 4,000 training iterations. Rasterization/gradient accumulation is the largest measured training kernel cost. Those kernels already run on the GPU; rewriting the JavaScript orchestration in Rust would not remove that bottleneck. These are tiny-fixture measurements, not benchmarks for large real scenes.
 
-- 3–6 JPEG/PNG photos, maximum 24 MiB total, maximum 512-pixel image side, 1,500 target SIFT features per view, 100 retained tracks and 90-second processing budget.
-- Cancellation terminates the worker and prevents a pending image-decoding step from restarting it. Native handles are released on normal completion; worker termination discards the instance heap. Camera processing does not persist inputs. Training would write resized PNGs, `transforms.json` and SfM initialization into a unique temporary OPFS folder. Worker completion, failure, cancellation and the 180-second timeout attempt to delete that folder. Browser/device crashes may interrupt cleanup; clearing this site’s storage removes any remainder.
-- Inputs must have strong texture and all views must overlap the first view. Partial tracks, multiple components, variable intrinsics, lens distortion, EXIF calibration, HEIC, general camera-path robustness, and image-quality guidance are not implemented.
-- Tested on the procedural fixture, not a real camera-photo dataset or a physical iPhone. Numeric solver success alone does not guarantee a faithful scene on arbitrary photos.
-- The worker receives local pixel buffers; no upload endpoint exists. Tests assert no POST requests or external-origin requests. Local requests load app/dependency/WASM assets only.
-- The uncompressed WASM asset is **48,363,260 bytes (~46 MiB)**. This full OpenCV-contrib build is too heavy to call a phone-ready distribution. A leaner custom build or alternative needs evaluation before a public/mobile release.
-- This route is served by Vite for local development; it is not an entry in the production build and is not deployed to Pages. Do not remove that boundary until the full pipeline and deployment are reviewed.
+## Real-photo attempt
 
-## Dependency provenance
+Four photos, `01.JPG`–`04.JPG`, from [Skull - Cameramoves - Flash - No Background](https://gitlab.com/photogrammetry-test-sets/skull-cameramoves-flash-no-background) by [alansartlog](https://alansartlog.com), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), were tested locally at source commit `0f31c229ac289a615b3ae981a5f584856bb24c47`. Their README explicitly licenses the images. EXIF identifies Canon EOS REBEL T3 and a 55 mm lens; the test used an approximate focal of 1,268 px at the 512 px image width. No photo is copied into this repository.
 
-`@banou/opencv-wasm` is pinned to **0.0.6**, obtained from `https://registry.npmjs.org/@banou/opencv-wasm/-/opencv-wasm-0.0.6.tgz`. The archive was checked against npm's SHA-512 integrity before use; `package-lock.json` retains the integrity pin. It was installed with lifecycle scripts disabled. The package facade is Apache-2.0 and includes native dependency licenses/notices. Source: https://github.com/banou26/opencv-wasm . Review and retain its `THIRD_PARTY_NOTICES.md` and `lib/licenses/` for any future redistributed binary; this build enables OpenCV nonfree features.
+The test failed before training with **only eight reciprocal matches for image 3**. [Failure/provenance/hashes](evidence/real-photo-failed-reconstruction.json) are preserved. Reproduce after downloading these licensed files to a local directory with `REAL_PHOTO_DIR=/absolute/path npm run test:training`; the current subset is expected to fail. This demonstrates a real SfM limitation, not a passing end-to-end real-photo result.
 
-Installation/execution from the official npm registry is within the approved development task; there is no outstanding action-time permission blocker for this pinned package. The hosted WebSfM app bundle was read as data but never executed or copied into this project.
+## Privacy and limits
 
-## Failure investigated
+- 3–6 equal-dimension JPEG/PNG photos, maximum 24 MiB total; no HEIC, video, EXIF autocalibration, lens-distortion correction, partial tracks or disconnected views. Supply focal length at the resized 512 px resolution.
+- All input decoding, matching, training and export stay on this device. No upload endpoint exists; tests reject any POST or external-origin request during the workflow. Splat.js jobs use memory, **not OPFS persistence**. Cancellation terminates the worker and clears pending output; repeated runs allocate a fresh device/model. Completed local downloads persist wherever the user saves them.
+- The pinned OpenCV WASM is about 46 MiB. It is too heavy to describe as phone-ready. Physical iPhone/Safari and robust real-photo success remain unverified.
+- The UI rejects unavailable adapters and fewer than eight storage buffers, reports WebGPU validation/device errors, and does not offer export after failed or cancelled training.
+- Low step budgets can fail the quality gate. Even accepted output may be blurry or lack coverage; a 2,000-Gaussian, degree-0 prototype is a deliberately small experiment.
 
-The first attempted solver configuration (300 retained tracks, initial keyframes 0 and 3) failed with a WASM memory-access error. A control case reproducing the package's known-correspondence reconstruction succeeded. The current bounded configuration uses 100 tracks and the upstream-tested keyframe pair 0 and 1 and succeeds on the image-derived fixture. No assertion was removed to conceal a failed reconstruction. Other datasets may still expose native solver failures; the worker reports the failed stage and ends the run.
+## Dependency provenance and licenses
 
-## Brush build and actual runtime evidence
+[Splat.js official source](https://github.com/arrival-space/splat.js/tree/88efe9aaf32279b0b9bcb781ea0deb4d60c49dff) is pinned to commit `88efe9aaf32279b0b9bcb781ea0deb4d60c49dff`. `package.json` uses that exact GitHub archive and `package-lock.json` pins its SHA-512 integrity. Upstream code was inspected and is unmodified. [MIT license](../licenses/Splat.js-LICENSE.txt), copyright 2026 Stratum1 GmbH, is retained. The package also contains unchanged Mediabunny code under MPL-2.0; its embedded notice/source link remains in the dependency. Video import is not exposed in this prototype. Splat.js is early version 0.1.0, so upstream README benchmark claims are not claimed as our results.
 
-Official source: [ArthurBrussee/brush](https://github.com/ArthurBrussee/brush/tree/1388f74c6fe0236f68ee4915564bf00e9d2e3747/apps/brush-js), Apache-2.0, pinned to `1388f74c6fe0236f68ee4915564bf00e9d2e3747`. Its Cargo.lock pins Burn/CubeCL and other vendor dependencies. npm [wasm-pack](https://github.com/wasm-bindgen/wasm-pack) is pinned to 0.15.0 (MIT OR Apache-2.0), Rust to 1.95.0. The build script copies the upstream LICENSE and records provenance beside generated files. The original app's license remains undecided. [Brush's full license](../licenses/Brush-LICENSE.txt) applies to its source patch, not to the original app. [Brush's full license](../licenses/Brush-LICENSE.txt) applies to its source patch, not to the original app.
+`@banou/opencv-wasm` is pinned to 0.0.6 from the official npm registry with lockfile integrity. Its facade is Apache-2.0 and its distribution contains native dependency notices, including enabled nonfree features. Retain its `THIRD_PARTY_NOTICES.md` and `lib/licenses/` before any future redistributed native build. Source: https://github.com/banou26/opencv-wasm . The unlicensed hosted WebSfM bundle was never executed.
 
-The small source patch adds `BrushSplats.exportPly()` using upstream `brush_serde::splat_to_ply` and disables Burn GPU autotuning. Unmodified autotuning panicked because WASM cannot block on GPU futures; full tuning also failed when its samples carried no timing measurement. A worker-local WGSL adapter adds the missing `enable subgroups;` declaration and checks generated shader storage-binding counts against actual device limits. No substituted training kernels or diagnostic writes remain.
+The original app license remains undecided. Spark, Three.js and build/test attribution are in the README. No API key, paid service or account permission change is needed.
 
-The dataset handoff converts OpenCV world-to-camera matrices to Nerfstudio/OpenGL camera-to-world matrices. An independent known-pose round-trip test checks the axis conversion and center. The `init.ply` contains image-derived SfM XYZ and sampled photo RGB only; it is **initialization, not trained output**. Brush initializes Gaussian scales/quaternions/opacity and optimizes its real model. Only canonical trained PLY bytes enter Spark through its existing local-file input. No server training or upload path exists.
+## Separate failed Brush experiment
 
-The bounded configuration requests 50–400 steps, at most 2,000 splats, 256-pixel training images, a 64 MiB scene-image cache, SH degree 0, an evaluation split every fourth view, and evaluation every 50 iterations. This bounds requested work rather than total WASM/GPU process memory. Output is rejected if multiple evaluations show no held-out PSNR improvement.
-
-Before adding the capability gate, a diagnostic run with a temporary one-task dispatch workaround actually reached 400 Brush optimization steps, loaded 3 training views and 1 held-out view, and exported 85 finite Gaussians. **It failed validation:** held-out PSNR stayed exactly 7.427385807 dB from iteration 50 through 400, SSIM stayed 0.00108994, and Spark's exported scene was nearly blank. [Raw failed-run evidence](evidence/brush-mac-failed-run.json) and [render screenshot](evidence/brush-mac-failed-render.png) are retained as failure evidence, not success fixtures. No successful trained PLY fixture is claimed or bundled.
-
-Projection instrumentation showed zero visible splats and zero intersections even for a temporary known-value shader write. Buffer IDs confirmed dispatch and readback targeted the same buffers. Device inspection then exposed the actual limit: Apple `metal-3`, `maxStorageBuffersPerShaderStage = 10`. Brush's projection shader has 11 storage arrays plus its storage metadata array (12). Explicit device requests above the adapter limit are rejected. Default, high-performance, core and unsafe diagnostic adapter configurations all retained the limit of 10. The unsafe diagnostic flags are not used by the app or required setup. All temporary instrumentation, artificial writes and unsuccessful dispatch/readback workarounds were removed. The failed-run dispatch workaround is not in the final source patch. The failed-run dispatch workaround is not in the final source patch.
-
-This limitation is consistent with [Dawn's Metal limit allocation](https://github.com/google/dawn/blob/main/src/dawn/native/metal/PhysicalDeviceMTL.mm): shared buffer argument slots are divided among storage, uniform and vertex buffers. WebGPU API availability and shader-f16 support alone do not establish Brush compatibility. The worker also checks each compiled shader because later kernels may require more than the projection's minimum.
-
-## Remaining blocker and validation boundaries
-
-A successful browser-only photos → cameras → optimized Gaussians → visible exported scene is **not demonstrated**. Resolving this requires porting Brush's packed GPU kernels to supported browser binding limits or evaluating a different browser trainer. This is a concrete runtime capability blocker, not an account, payment, API-key or package-installation approval issue.
-
-Camera reconstruction and failed training were tested with original procedural images. No real camera-photo set was ingested or redistributed: inspected small OpenMVG/AliceVision sets had copyright statements or no explicit image license, so availability was not treated as permission. The existing Houseplant viewer sample is a separately licensed completed reconstruction; it is not evidence of training local photos here. A small explicitly licensed real multi-view set and physical iPhone/Safari validation remain outstanding after the trainer blocker is solved.
-
-The standard automated suite covers the production viewer, real licensed houseplant rendering/touch controls, image-derived cameras, known-pose dataset conversion, blank-input rejection/cancellation and the storage-binding capability gate. It does not claim to perform successful GPU training in headless CI. Production builds exclude `spike/index.html`; the draft branch must not deploy this experimental processing feature to Pages.
+Brush is no longer the active trainer. [Archived source/runtime investigation](brush-runtime-investigation.md), [failed metrics](evidence/brush-mac-failed-run.json) and [blank export](evidence/brush-mac-failed-render.png) remain clearly marked as failures. Its projection needs 12 storage buffers versus this Mac adapter's 10. `npm run brush:build` still reproduces the pinned source build and `spike/brush.worker.js` retains that implementation, but no UI invokes it. Brush source compilation passing CI is not evidence of successful GPU training.

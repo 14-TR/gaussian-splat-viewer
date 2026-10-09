@@ -1,49 +1,29 @@
-import init,{BrushApp,BrushMessageKind} from './brush-pkg/brush_js.js';
-import {writeDataset} from './dataset.js';
-self.onmessage=async({data:{files,reconstruction,jobId,steps=400}})=>{
-  let app,training,snapshot,parent;
-  const metrics=[];let actualIter=0;
-  try{
-    if(!navigator.gpu)throw Error('WebGPU is unavailable in this browser worker.');
-    const adapter=await navigator.gpu.requestAdapter();if(!adapter)throw Error('No WebGPU adapter was found. Use a supported desktop browser with hardware acceleration.');
-    if(adapter.limits.maxStorageBuffersPerShaderStage<12)throw Error(`This Brush build needs at least 12 storage buffers per shader stage; your WebGPU adapter supports ${adapter.limits.maxStorageBuffersPerShaderStage}. Camera reconstruction remains available. Training is blocked on this browser/device.`);
-    self.postMessage({stage:'Preparing temporary local camera dataset…'});
-    const root=await navigator.storage.getDirectory();parent=await root.getDirectoryHandle('gaussian-browser-jobs',{create:true});const directory=await parent.getDirectoryHandle(jobId,{create:true});
-    const info=await writeDataset(directory,files,reconstruction);
-    self.postMessage({stage:'Initializing Brush WebGPU training…'});
-    // Current CubeCL WGSL omits the browser's required subgroup extension directive.
-    // Add only the missing declaration; kernels and optimization remain upstream Brush.
-    const createShaderModule=GPUDevice.prototype.createShaderModule;
-    GPUDevice.prototype.createShaderModule=function(descriptor){
-      const code=descriptor.code,count=(code.match(/var<storage,/g)||[]).length;
-      if(count>this.limits.maxStorageBuffersPerShaderStage)throw Error(`Brush kernel ${descriptor.label} needs ${count} storage buffers; this device permits ${this.limits.maxStorageBuffersPerShaderStage}.`);
-      return createShaderModule.call(this,{...descriptor,code:code.includes('subgroup')&&!code.includes('enable subgroups;')?`enable subgroups;\n${code}`:code});
-    };
-    await init({module_or_path:new URL('./brush-pkg/brush_js_bg.wasm',import.meta.url)});app=new BrushApp();
-    const device=await adapter.requestDevice({requiredFeatures:['shader-f16','subgroups','timestamp-query'].filter(f=>adapter.features.has(f)),requiredLimits:{maxStorageBuffersPerShaderStage:adapter.limits.maxStorageBuffersPerShaderStage,maxStorageBufferBindingSize:Math.min(256*1024*1024,adapter.limits.maxStorageBufferBindingSize),maxBufferSize:Math.min(256*1024*1024,adapter.limits.maxBufferSize),maxComputeWorkgroupStorageSize:adapter.limits.maxComputeWorkgroupStorageSize}});
-    device.lost.then(info=>self.postMessage({error:`WebGPU device lost: ${info.reason}: ${info.message}`}));
-    app.initExisting(adapter,device,device.queue);
-    training=app.startTrainingFromDirectory(directory,async config=>({...config,'total-train-iters':Math.min(400,Math.max(50,steps)),'max-splats':2000,'max-resolution':256,'max-scene-batch-cache-size':64*1024*1024,'eval-split-every':4,'eval-every':50,'sh-degree':0,'refine-every':50,'growth-stop-iter':350,'lpips-loss-weight':0,'background-noise-strength':0,'mean-noise-weight':0,'rerun-enabled':false}));
-    let initialBytes,done=false,loaded;
-    while(!done){
-      const messages=await training.trainSteps(5);if(!messages.length)break;
-      for(const message of messages){
-        if(message.kind===BrushMessageKind.DatasetLoaded)loaded={trainViews:message.trainViews,evalViews:message.evalViews};
-        if(message.kind===BrushMessageKind.TrainStep){actualIter=message.iter;self.postMessage({stage:`Training Gaussians: ${actualIter}/${steps}`,iter:actualIter})}
-        if(message.kind===BrushMessageKind.EvalResult){const value={iter:message.iter,psnr:message.psnr,ssim:message.ssim};metrics.push(value);self.postMessage({stage:`Held-out evaluation at ${value.iter}: ${value.psnr?.toFixed(2)} dB PSNR`,metric:value})}
-        if(message.kind===BrushMessageKind.Warning)self.postMessage({stage:`Brush warning: ${message.text}`});
-        if(message.kind===BrushMessageKind.DoneTraining)done=true;
-        message.free();
-      }
-      if(!initialBytes){snapshot=training.currentSplats();if(snapshot){initialBytes=await snapshot.exportPly();snapshot.free();snapshot=null}}
-    }
-    if(actualIter<50)throw Error(`Training ended before its minimum step budget: ${actualIter}.`);
-    if(metrics.length>1&&metrics.at(-1).psnr<=metrics[0].psnr+.01)throw Error('Training did not improve held-out PSNR; no trained output is offered.');
-    snapshot=training.currentSplats();if(!snapshot||!snapshot.numSplats||snapshot.numSplats>2000)throw Error('No valid bounded trained splats were produced.');
-    self.postMessage({stage:'Exporting trained Gaussian PLY through Brush…'});
-    const bytes=await snapshot.exportPly(),count=snapshot.numSplats;
-    if(!bytes.length)throw Error('Brush exported an empty PLY.');
-    self.postMessage({ok:true,bytes:bytes.buffer,initialBytes:initialBytes.buffer,numSplats:count,iterations:actualIter,metrics,dataset:info,loaded,source:'Actual Brush WebGPU training from reconstructed camera dataset'},[bytes.buffer,initialBytes.buffer]);
-  }catch(e){self.postMessage({error:e instanceof Error?e.message:String(e),stage:'Gaussian training failed',iterations:actualIter,metrics})}
-  finally{snapshot?.free();training?.free();app?.free();try{await parent?.removeEntry(jobId,{recursive:true})}catch{}}
+import { createGpu, createTrainer, seed, initGaussians, gaussiansToPly, bakeOpacityCompensation } from 'splat.js';
+// OpenCV and Splat.js both use row-major world-to-camera R,t: X right, Y down, Z forward.
+self.onmessage=async({data:{files,reconstruction,steps}})=>{
+ let gpu;
+ try{
+  const start=performance.now(),images=[];
+  for(const file of files){const bm=await createImageBitmap(file),s=Math.min(1,256/Math.max(bm.width,bm.height));const cv=new OffscreenCanvas(Math.round(bm.width*s),Math.round(bm.height*s)),ctx=cv.getContext('2d');ctx.drawImage(bm,0,0,cv.width,cv.height);bm.close();const rgba=ctx.getImageData(0,0,cv.width,cv.height).data,rgb=new Float32Array(cv.width*cv.height*3);for(let i=0;i<cv.width*cv.height;i++)for(let c=0;c<3;c++)rgb[i*3+c]=rgba[i*4+c]/255;images.push({tw:cv.width,th:cv.height,rgb})}
+  const scale=images[0].tw/reconstruction.width;
+  const cams=reconstruction.cameras.map((c,imgIdx)=>({R:c.rotation,t:c.translation,imgIdx,f:reconstruction.intrinsics.focal*scale,cx:reconstruction.intrinsics.cx*scale,cy:reconstruction.intrinsics.cy*scale}));
+  const points=reconstruction.points.map(X=>{const c=cams[0],p=[0,1,2].map(j=>c.R[j*3]*X[0]+c.R[j*3+1]*X[1]+c.R[j*3+2]*X[2]+c.t[j]);const x=Math.max(0,Math.min(images[0].tw-1,Math.round(c.f*p[0]/p[2]+c.cx))),y=Math.max(0,Math.min(images[0].th-1,Math.round(c.f*p[1]/p[2]+c.cy)));return {X,rgb:Array.from(images[0].rgb.slice((y*images[0].tw+x)*3,(y*images[0].tw+x)*3+3))}});
+  const model=reconstruction.knownCameras ? initGaussians(points,0,2000) : seed(points,{initTarget:2000,maxGaussians:2000});
+  gpu=await createGpu();let error;gpu.device.addEventListener('uncapturederror',e=>{error=e.error.message});gpu.onLost=info=>{error=info.message||'GPU device lost'};
+  gpu.device.pushErrorScope('validation');
+  const trainer=await createTrainer({gpu,shDeg:0,maxSplats:2000,maxIters:steps,entriesCap:200000,compact:false,mipComp:true,blobRatio:4});
+  trainer.setup(model,cams,images,256,192,model.radius);trainer.holdout=cams.length-1;
+  const validation=await gpu.device.popErrorScope();if(validation)throw Error(validation.message);
+  const setupMs=performance.now()-start,metrics=[];
+  const exportModel=async()=>{const m=await trainer.readGaussians();if(!m.data.every(Number.isFinite))throw Error('Non-finite Gaussian parameters');const baked=bakeOpacityCompensation(m.data,m.n,cams[0].f,reconstruction.cameraCenters.flat(),trainer.dilate);return new Uint8Array(await gaussiansToPly(baked,m.n,m.sh,m.shK,m.dc).arrayBuffer())};
+  const initialBytes=await exportModel();const initialParams=(await trainer.readGaussians()).data;
+  const trainStart=performance.now();
+  for(let i=0;i<=steps;i+=50){if(i)for(let k=0;k<50;k++)trainer.stepOnce();await gpu.device.queue.onSubmittedWorkDone();if(error)throw Error(error);metrics.push({iteration:trainer.iter,psnr:await trainer.evalCamPsnr(trainer.holdout)});self.postMessage({stage:`Splat.js: ${trainer.iter}/${steps} iterations; held-out PSNR ${metrics.at(-1).psnr.toFixed(2)} dB`})}
+  const trainMs=performance.now()-trainStart,finalParams=(await trainer.readGaussians()).data;
+  const parameterDelta=finalParams.reduce((sum,v,i)=>sum+Math.abs(v-initialParams[i]),0);
+  if(!(parameterDelta>0)||!metrics.every(m=>Number.isFinite(m.psnr))||metrics.at(-1).psnr<=metrics[0].psnr+.01)throw Error(`Training quality failed: parameter delta ${parameterDelta}, held-out PSNR ${metrics[0].psnr} → ${metrics.at(-1).psnr}`);
+  const bytes=await exportModel();
+  let gpuProfile;try{gpuProfile=await trainer.profileSteps(10)}catch(e){gpuProfile={error:e.message}}
+  self.postMessage({ok:true,engine:'Splat.js',iterations:steps,numSplats:trainer.n,metrics,parameterDelta,timing:{setupMs,trainMs},gpuProfile,intrinsics:cams[0],device:{description:gpu.info.description,maxStorageBuffersPerShaderStage:gpu.device.limits.maxStorageBuffersPerShaderStage},bytes:bytes.buffer,initialBytes:initialBytes.buffer},[bytes.buffer,initialBytes.buffer]);
+ }catch(e){self.postMessage({error:e.message||String(e)})}finally{gpu?.dispose()}
 };

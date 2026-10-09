@@ -1,7 +1,7 @@
 import { createOpenCV, matFromArray, matFromImageData } from '@banou/opencv-wasm';
 import wasmUrl from '@banou/opencv-wasm/opencv_js.wasm?url';
 self.onmessage=async ({data:{images,focal}})=>{
- let cv,stage='runtime initialization';const progress=text=>{stage=text;self.postMessage({stage})};const owned=[];const own=x=>{if(!x)throw Error('Native object creation failed');owned.push(x);return x};
+ const started=performance.now();let cv,stage='runtime initialization';const progress=text=>{stage=text;self.postMessage({stage})};const owned=[];const own=x=>{if(!x)throw Error('Native object creation failed');owned.push(x);return x};
  try {
   cv=await createOpenCV({wasmUrl,print:s=>console.log(s),printErr:s=>console.warn(s)});
   const sift=own(cv.SIFT.create(1500));const features=[];
@@ -35,7 +35,7 @@ self.onmessage=async ({data:{images,focal}})=>{
   const centers=cameras.map(({rotation:r,translation:t})=>[0,1,2].map(j=>-(r[j]*t[0]+r[j+3]*t[1]+r[j+6]*t[2])));
   const baseline=Math.max(...centers.map(c=>Math.hypot(...c.map((v,j)=>v-centers[0][j]))));
   const error=reconstruction.getError();if(cameras.length!==images.length||xyz.length<30||!xyz.every(p=>p.length===3&&p.every(Number.isFinite))||!Number.isFinite(error)||error>3||!Number.isFinite(baseline)||baseline<1e-6||!cameras.every(c=>[...c.rotation,...c.translation].every(Number.isFinite)))throw Error(`Reconstruction quality failed: ${cameras.length} cameras, ${xyz.length} points, ${error} pixel error.`);
-  self.postMessage({ok:true,featureCounts:features.map(f=>f.points.length),tracks:anchors.length,reprojectionError:error,cameras,cameraCenters:centers,points:xyz,intrinsics:{focal,cx:images[0].width/2,cy:images[0].height/2},note:'Camera reconstruction only; no Gaussian training yet.'});
+  self.postMessage({ok:true,elapsedMs:performance.now()-started,width:images[0].width,height:images[0].height,featureCounts:features.map(f=>f.points.length),tracks:anchors.length,reprojectionError:error,cameras,cameraCenters:centers,points:xyz,intrinsics:{focal,cx:images[0].width/2,cy:images[0].height/2},note:'Camera reconstruction only; no Gaussian training yet.'});
  }catch(e){let error=e instanceof Error?e.message:String(e);if(typeof e==='number'&&cv)try{error=cv.exceptionFromPtr(e).msg}catch{}self.postMessage({error,failedStage:stage})}
  finally{for(const o of owned.reverse())try{if(!o.isDeleted())o.delete()}catch{}}
 };

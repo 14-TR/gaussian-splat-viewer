@@ -21,10 +21,10 @@ test('image-derived feature tracks reconstruct cameras without receiving ground-
   const download=await downloadPromise;await download.saveAs('test-results/camera-reconstruction.json');
   await page.screenshot({path:'test-results/camera-spike.png',fullPage:true});
   // A real hardware limit must block before engine startup instead of exporting a blank scene.
-  await page.evaluate(()=>Object.defineProperty(navigator,'gpu',{configurable:true,value:{requestAdapter:async()=>({limits:{maxStorageBuffersPerShaderStage:10}})}}));
+  await page.evaluate(()=>Object.defineProperty(navigator,'gpu',{configurable:true,value:{requestAdapter:async()=>({limits:{maxStorageBuffersPerShaderStage:7}})}}));
   await page.locator('#train').click();
-  await expect(page.locator('#status')).toContainText('supports 10');
-  expect((await page.evaluate(()=>(window as any).trainingResult)).error).toContain('needs at least 12');
+  await expect(page.locator('#status')).toContainText('supports 7');
+  expect((await page.evaluate(()=>(window as any).trainingResult)).error).toContain('needs at least 8');
   await expect(page.locator('#export-ply')).toBeDisabled();
   await expect(page.locator('#trained-viewer')).toBeHidden();
   expect(await page.evaluate(async()=>{try{const root=await navigator.storage.getDirectory();const dir=await root.getDirectoryHandle('gaussian-browser-jobs');const names=[];for await(const name of (dir as any).keys())names.push(name);return names}catch{return []}})).toEqual([]);

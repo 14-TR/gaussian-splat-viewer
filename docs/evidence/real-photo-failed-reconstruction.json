@@ -1,0 +1,19 @@
+{
+  "accepted": false,
+  "stage": "camera matching",
+  "error": "Only 8 reciprocal matches for image 3.",
+  "source": "https://gitlab.com/photogrammetry-test-sets/skull-cameramoves-flash-no-background",
+  "commit": "0f31c229ac289a615b3ae981a5f584856bb24c47",
+  "attribution": "Photogrammetry Test Set: Skull - Cameramoves - Flash - No Background by alansartlog / CC BY 4.0",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "images": {
+    "01.JPG": "49cc69b7e2e8999252c71536cc5a8a0ee32ae25d56d896969542653fa93e4858",
+    "02.JPG": "a0921ae9729fb92088f8335ed80cfcdede56a974dc07dc9501ab9eea37875d7a",
+    "03.JPG": "3aae3bbf830469ea8711915545627692b9655de9f881fa0b9a128543b8fb4be1",
+    "04.JPG": "53b65d52600e6afa41a25c433b81501ae11248df690abff828c48c97e2c428e5"
+  },
+  "focalResizedPx": 1268,
+  "calibration": "Approximate 55 mm focal / 22.2 mm sensor width * 512 px; fixed intrinsics, no distortion correction.",
+  "trainingAttempted": false,
+  "photosRedistributed": false
+}

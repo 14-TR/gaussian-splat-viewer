@@ -16,6 +16,7 @@
   "type": "module",
   "dependencies": {
     "@sparkjsdev/spark": "^2.3.1",
+    "splat.js": "https://github.com/arrival-space/splat.js/archive/88efe9aaf32279b0b9bcb781ea0deb4d60c49dff.tar.gz",
     "three": "^0.186.1"
   },
   "devDependencies": {
