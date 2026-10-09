@@ -78,3 +78,7 @@ Dependency versions are locked in `package-lock.json`; their licenses remain in 
 ## Project license
 
 A license for this project's original code has **not yet been selected**. Public visibility does not grant an open-source license. The owner should choose a license before inviting reuse or contributions. Third-party dependencies retain their own licenses.
+
+## Experimental browser reconstruction
+
+A dev-only [camera-reconstruction spike](docs/browser-reconstruction-spike.md) is available at `/gaussian-splat-viewer/spike/index.html` when running Vite locally. It matches local multi-view images and reconstructs cameras/points with pinned OpenCV WASM. **Gaussian training is not yet connected.** The existing production viewer and Pages deployment exclude this experimental route.

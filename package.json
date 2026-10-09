@@ -17,6 +17,7 @@
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@banou/opencv-wasm": "0.0.6",
     "@playwright/test": "^1.64.0",
     "@types/pngjs": "^6.0.5",
     "@types/three": "^0.186.0",
